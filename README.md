@@ -37,4 +37,4 @@ Where can you help?
 ```
 Any other ideas? Create an issue!
 
-TOOD: document firmware, updates, extraction, analysis of binaries, hardware schematic, battery pack updater, etc.
+TODO: document firmware, update format, extraction, analysis of binaries, hardware schematic, battery pack updater, etc.
