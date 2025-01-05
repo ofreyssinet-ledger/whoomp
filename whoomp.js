@@ -98,6 +98,12 @@ async function handleDisconnect(event) {
 
     // Hide elements
     ui.hideElements(true);
+
+    // Change button back
+    const connectButton = document.getElementById('connectButton');
+    connectButton.textContent = 'Connect WHOOP';
+    connectButton.classList.replace('bg-red-500', 'bg-blue-500');
+    connectButton.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
 }
 
 /**
@@ -455,6 +461,24 @@ async function sendHaptics() {
 
 }
 
+/**
+ * REBOOT_STRAP command
+ */
+async function sendReboot() {
+    if (!device?.gatt?.connected) {
+        console.error(`please connect to the device first`);
+        return;
+    }
+
+    try {
+        let pkt = new WhoopPacket(PacketType.COMMAND, 0, CommandNumber.REBOOT_STRAP, new Uint8Array([0x00])).framedPacket();
+        await characteristics.cmdToStrap.writeValue(pkt);
+    } catch (error) {
+        console.error(`error sending command: ${error.message}`);
+    }
+
+}
+
 const connectButton = document.getElementById('connectButton');
 connectButton.addEventListener('click', async () => {
     if (connectButton.textContent.trim() === 'Connect WHOOP') {
@@ -465,10 +489,7 @@ connectButton.addEventListener('click', async () => {
             connectButton.classList.replace('hover:bg-blue-700', 'hover:bg-red-700');
         }
     } else {
-        await disconnectFromWhoop();
-        connectButton.textContent = 'Connect WHOOP';
-        connectButton.classList.replace('bg-red-500', 'bg-blue-500');
-        connectButton.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
+        await disconnectFromWhoop();   
     }
 });
 
@@ -478,6 +499,7 @@ document.getElementById('downloadButton').addEventListener('click', downloadHist
 document.getElementById('getClockButton').addEventListener('click', sendGetClock);
 document.getElementById('alarmButton').addEventListener('click', sendAlarm);
 document.getElementById('hapticsButton').addEventListener('click', sendHaptics);
+document.getElementById('rebootButton').addEventListener('click', sendReboot);
 
 document.getElementById('timeLimit').addEventListener('input', ui.updateTime);
 

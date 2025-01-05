@@ -6,6 +6,8 @@ WHOOP 4.0 strap reverse engineering.
 
 ## Website
 
+Live at [https://jogolden.github.io/whoomp/](https://jogolden.github.io/whoomp/) !!
+
 This uses the [Web Bluetooth API which](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API) is not supported on some browsers.
 Most of the interesting functionality is in the `whoop.js` module. This connects, setups event handlers, and implements commands.
 
