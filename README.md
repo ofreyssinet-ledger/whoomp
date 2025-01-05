@@ -2,7 +2,7 @@
 
 [![whoomp demo video](https://img.youtube.com/vi/wjk0XNbbfKQ/0.jpg)](https://www.youtube.com/watch?v=wjk0XNbbfKQ)
 
-WHOOP 4.0 strap reverse engineering.
+WHOOP 4.0 strap reverse engineering. [Whoomp! There It Is](https://www.youtube.com/watch?v=Z-FPimCmbX8)
 
 ## Website
 
