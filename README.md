@@ -13,7 +13,7 @@ Most of the interesting functionality is in the `whoop.js` module. This connects
 
 ## Scripts
 
-Before I started on the website, I created some python scripts. My process will basically reverse engineer Android app, get latest firmware, extract firmware, analyze firmware, rebuild everything in python using the bleak BLE library.
+Before I started on the website, I created some python scripts. My process was basically reverse engineer Android app, get latest firmware, extract firmware, analyze firmware, rebuild everything in python using the bleak library.
 - `whoop.py` basic cli interface for dealing with the whoop
 - `packet.py` packet structure class and enums
 - `parser.py` this will parse the historical data packets
