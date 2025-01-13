@@ -31,7 +31,7 @@ const historicalDataLogger = new FileStreamHandler("historical_data_stream.bin")
 async function connectToWhoop() {
     try {
         device = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: "WHOOP" }],
+            filters: [{ services: [WHOOP_SERVICE] }],
             optionalServices: [WHOOP_SERVICE]
         });
 
