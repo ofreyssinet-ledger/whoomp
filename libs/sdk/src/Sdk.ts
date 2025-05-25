@@ -1,4 +1,4 @@
-import { type Transport } from '../transport';
+import { type Transport } from './Transport';
 
 export class Sdk {
   transport: Transport;

@@ -1,2 +1,2 @@
-export { type Transport } from './transport';
-export { Sdk } from './sdk';
+export { type Transport } from './Transport';
+export { Sdk } from './Sdk';
