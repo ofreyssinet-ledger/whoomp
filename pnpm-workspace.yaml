@@ -1,6 +1,6 @@
 packages:
-  - 'apps/*'
-  - 'packages/*'
-
+  - apps/*
+  - packages/*
 catalog:
   rxjs: ^7.8.1
+nodeLinker: isolated

@@ -1,4 +1,9 @@
+const {resolve} = require('path');
+
 const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
+
+const defaultConfig = getDefaultConfig();
+const {assetExts, sourceExts} = defaultConfig.resolver;
 
 /**
  * Metro configuration
@@ -6,6 +11,23 @@ const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
  *
  * @type {import('@react-native/metro-config').MetroConfig}
  */
-const config = {};
+const config = {
+  resolver: {
+    projectRoot: resolve(__dirname, '../..'),
+    nodeModulesPaths: [
+      resolve(__dirname, 'node_modules'),
+      resolve(__dirname, '../../node_modules'),
+    ],
+    sourceExts: [...sourceExts, 'mjs'],
+    // NOTE: react-native is the default, browser added to fix axios issue where nodejs version is the default export
+    unstable_conditionNames: ['react-native', 'browser'],
+    unstable_enablePackageExports: true,
+    unstable_enableSymlinks: true,
+  },
+  watchFolders: [
+    resolve(__dirname, '../../packages'),
+    resolve(__dirname, '../../node_modules'),
+  ],
+};
 
 module.exports = mergeConfig(getDefaultConfig(__dirname), config);
