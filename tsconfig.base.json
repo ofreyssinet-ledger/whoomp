@@ -4,7 +4,6 @@
     "module": "ESNext",
     "lib": ["DOM", "ES2020"],
     "moduleResolution": "bundler",
-    "emitDeclarationOnly": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
     "strict": true,
