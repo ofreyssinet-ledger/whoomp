@@ -1,6 +1,6 @@
 packages:
   - 'apps/*'
-  - 'libs/*'
+  - 'packages/*'
 
 catalog:
   rxjs: ^7.8.1

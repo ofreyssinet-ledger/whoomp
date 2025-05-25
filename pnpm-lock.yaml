@@ -31,11 +31,11 @@ importers:
   apps/mobile:
     dependencies:
       '@whoomp/sdk':
-        specifier: workspace:^
-        version: link:../../libs/sdk
+        specifier: workspace:*
+        version: link:../../packages/sdk
       '@whoomp/transport-rn-ble':
-        specifier: workspace:^
-        version: link:../../libs/transport-rn-ble
+        specifier: workspace:*
+        version: link:../../packages/transport-rn-ble
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -101,11 +101,11 @@ importers:
   apps/web:
     dependencies:
       '@whoomp/sdk':
-        specifier: workspace:^
-        version: link:../../libs/sdk
+        specifier: workspace:*
+        version: link:../../packages/sdk
       '@whoomp/transport-web-ble':
-        specifier: workspace:^
-        version: link:../../libs/transport-web-ble
+        specifier: workspace:*
+        version: link:../../packages/transport-web-ble
       react:
         specifier: ^19.1.0
         version: 19.1.0
@@ -147,30 +147,30 @@ importers:
         specifier: ^6.3.5
         version: 6.3.5(@types/node@22.15.21)(terser@5.39.2)(yaml@2.8.0)
 
-  libs/sdk:
+  packages/sdk:
     dependencies:
       rxjs:
         specifier: 'catalog:'
         version: 7.8.2
 
-  libs/transport-rn-ble:
+  packages/transport-rn-ble:
     dependencies:
       rxjs:
         specifier: 'catalog:'
         version: 7.8.2
     devDependencies:
       '@whoomp/sdk':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../sdk
 
-  libs/transport-web-ble:
+  packages/transport-web-ble:
     dependencies:
       rxjs:
         specifier: 'catalog:'
         version: 7.8.2
     devDependencies:
       '@whoomp/sdk':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../sdk
 
 packages:

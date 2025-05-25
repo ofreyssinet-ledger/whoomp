@@ -12,8 +12,8 @@
   "dependencies": {
     "react": "19.0.0",
     "react-native": "0.79.2",
-    "@whoomp/sdk": "workspace:^",
-    "@whoomp/transport-rn-ble": "workspace:^"
+    "@whoomp/sdk": "workspace:*",
+    "@whoomp/transport-rn-ble": "workspace:*"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

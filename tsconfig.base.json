@@ -10,10 +10,10 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@whoomp/sdk": ["libs/sdk/src"],
-      "@whoomp/transport-web-ble": ["libs/transport-web-ble/src"],
-      "@whoomp/transport-rn-ble": ["libs/transport-rn-ble/src"],
-      "@whoomp/ui-hooks": ["libs/ui-hooks/src"]
+      "@whoomp/sdk": ["packages/sdk/src"],
+      "@whoomp/transport-web-ble": ["packages/transport-web-ble/src"],
+      "@whoomp/transport-rn-ble": ["packages/transport-rn-ble/src"],
+      "@whoomp/ui-hooks": ["packages/ui-hooks/src"]
     }
   }
 }

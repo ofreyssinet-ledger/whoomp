@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/transport-web-ble" },
+    { "path": "./packages/transport-rn-ble" },
+    { "path": "./packages/sdk" }
+  ]
+}

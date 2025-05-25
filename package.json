@@ -4,7 +4,7 @@
   "packageManager": "pnpm@10.10.0",
   "workspaces": [
     "apps/*",
-    "libs/*"
+    "packages/*"
   ],
   "devDependencies": {
     "prettier": "^3.5.3",
