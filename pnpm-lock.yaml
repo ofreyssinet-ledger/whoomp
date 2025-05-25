@@ -13,6 +13,10 @@ catalogs:
 importers:
 
   .:
+    dependencies:
+      '@babel/runtime':
+        specifier: ^7.27.1
+        version: 7.27.1
     devDependencies:
       prettier:
         specifier: ^3.5.3
@@ -26,6 +30,12 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@whoomp/sdk':
+        specifier: workspace:^
+        version: link:../../libs/sdk
+      '@whoomp/transport-rn-ble':
+        specifier: workspace:^
+        version: link:../../libs/transport-rn-ble
       react:
         specifier: 19.0.0
         version: 19.0.0
@@ -143,7 +153,15 @@ importers:
         specifier: 'catalog:'
         version: 7.8.2
 
-  libs/transport-rn-ble: {}
+  libs/transport-rn-ble:
+    dependencies:
+      rxjs:
+        specifier: 'catalog:'
+        version: 7.8.2
+    devDependencies:
+      '@whoomp/sdk':
+        specifier: workspace:^
+        version: link:../sdk
 
   libs/transport-web-ble:
     dependencies:
@@ -154,9 +172,6 @@ importers:
       '@whoomp/sdk':
         specifier: workspace:^
         version: link:../sdk
-      typescript:
-        specifier: ~5.8.3
-        version: 5.8.3
 
 packages:
 

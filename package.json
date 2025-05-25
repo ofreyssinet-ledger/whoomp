@@ -1,11 +1,15 @@
 {
   "name": "whoomp-monorepo",
   "private": true,
-  "workspaces": ["apps/*", "libs/*"],
+  "packageManager": "pnpm@10.10.0",
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
   "devDependencies": {
+    "prettier": "^3.5.3",
     "turbo": "latest",
-    "typescript": "^5.8.3",
-    "prettier": "^3.5.3"
+    "typescript": "^5.8.3"
   },
   "scripts": {
     "dev": "turbo run dev --parallel",
@@ -16,5 +20,8 @@
     "sdk": "pnpm --filter @whoomp/sdk",
     "transport-rn": "pnpm --filter @whoomp/transport-rn",
     "transport-web": "pnpm --filter @whoomp/transport-web"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.27.1"
   }
 }

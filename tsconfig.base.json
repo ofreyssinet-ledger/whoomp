@@ -10,8 +10,8 @@
     "baseUrl": ".",
     "paths": {
       "@whoomp/sdk": ["libs/sdk/src"],
-      "@whoomp/transport-web": ["libs/transport-web/src"],
-      "@whoomp/transport-rn": ["libs/transport-rn/src"],
+      "@whoomp/transport-web-ble": ["libs/transport-web-ble/src"],
+      "@whoomp/transport-rn-ble": ["libs/transport-rn-ble/src"],
       "@whoomp/ui-hooks": ["libs/ui-hooks/src"]
     }
   }

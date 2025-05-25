@@ -1,6 +1,6 @@
 # Node modules
 
-/node_modules
+**/node_modules/
 
 # Turborepo cache
 
@@ -8,8 +8,8 @@
 
 # Build output
 
-/dist
-/build
+**/dist
+**/build
 
 # TypeScript cache files
 
