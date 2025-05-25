@@ -1,0 +1,30 @@
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["lib/**", ".next/**"],
+      "inputs": ["src/**/*.ts", "index.ts"]
+    },
+    "lint": {
+      "dependsOn": ["build"]
+    },
+    "lint:fix": {
+      "dependsOn": ["build"]
+    },
+    "prettier": {
+      "dependsOn": ["^prettier"]
+    },
+    "prettier:fix": {
+      "dependsOn": ["^prettier:fix"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "typecheck": {
+      "dependsOn": ["^build", "^typecheck"]
+    }
+  }
+}

@@ -1,0 +1,58 @@
+# Node modules
+
+/node_modules
+
+# Turborepo cache
+
+/.turbo
+
+# Build output
+
+/dist
+/build
+
+# TypeScript cache files
+
+*.tsbuildinfo
+
+# Vite cache
+
+/node_modules/.vite
+
+# Logs
+
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+
+/coverage
+
+# Environment variables
+
+.env
+.env.local
+
+# IDE files
+
+.vscode/
+.idea/
+
+# macOS files
+
+.DS_Store
+
+# Web app build outputs
+
+/apps/web/dist/
+/apps/web/.cache/
+
+# React Native
+
+/apps/mobile/ios/Pods/
+/apps/mobile/ios/build/
+/apps/mobile/android/.gradle/
+/apps/mobile/android/app/build/
+/apps/mobile/android/local.properties
