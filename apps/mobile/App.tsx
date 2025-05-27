@@ -25,8 +25,8 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
-import { Sdk } from "@whoomp/sdk";
-import { RNBleTransport } from '@whoomp/transport-rn-ble';
+import {Sdk} from '@whoomp/sdk';
+import {RNBleTransport} from '@whoomp/transport-rn-ble';
 
 type SectionProps = PropsWithChildren<{
   title: string;

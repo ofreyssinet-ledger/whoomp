@@ -28,7 +28,8 @@
     "rxjs": "catalog:"
   },
   "devDependencies": {
-    "@whoomp/sdk": "workspace:*"
+    "@whoomp/sdk": "workspace:*",
+    "@types/web-bluetooth": "0.0.21"
   },
   "peerDependencies": {
     "@whoomp/sdk": "workspace:*"
