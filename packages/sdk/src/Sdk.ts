@@ -1,10 +1,18 @@
-import { first, firstValueFrom, map, Observable } from 'rxjs';
-import { ConnectedDevice, DiscoveredDevice, type Transport } from './Transport';
+import { BehaviorSubject, map, Observable } from 'rxjs';
+import {
+  TransportConnectedDevice,
+  DiscoveredDevice,
+  type Transport,
+  ConnectedDevice,
+} from './Transport';
 import { Command } from './Command';
-import { WhoopPacket } from './WhoopPacket';
+import { DeviceSession } from './DeviceSession';
 
 export class Sdk {
   transport: Transport;
+
+  private deviceSessions: BehaviorSubject<Record<string, DeviceSession>> =
+    new BehaviorSubject({});
 
   constructor(transport: Transport) {
     console.log('SDK: Initialized with transport', transport);
@@ -16,42 +24,65 @@ export class Sdk {
     return this.transport.helloWorld();
   }
 
+  observeConnectedDevices(): Observable<{ [id: string]: ConnectedDevice }> {
+    console.log('SDK: observeConnectedDevices called');
+    return this.deviceSessions.asObservable().pipe(
+      map((sessions) => {
+        const connectedDevices: Record<string, ConnectedDevice> = {};
+        for (const [id, session] of Object.entries(sessions)) {
+          connectedDevices[id] = session.getConnectedDevice();
+        }
+        return connectedDevices;
+      }),
+    );
+  }
+
   getDevices(): Observable<DiscoveredDevice[]> {
     console.log('SDK: getDevices called');
     return this.transport.getDevices();
   }
 
-  connectToDevice(
-    id: string,
-    onDisconnect: () => void,
-  ): Promise<ConnectedDevice> {
+  async connectToDevice(id: string, onDisconnect: () => void): Promise<string> {
     console.log('SDK: connectToDevice called with id', id);
-    return this.transport.connectToDevice(id, onDisconnect);
+    const onDisconnectWrapper = () => {
+      onDisconnect();
+      const { [id]: sessionToRemove, ...remainingSessions } =
+        this.deviceSessions.getValue();
+      this.deviceSessions.next(remainingSessions);
+    };
+    const connectedDevice = await this.transport.connectToDevice(
+      id,
+      onDisconnectWrapper,
+    );
+    const deviceSession = new DeviceSession(connectedDevice);
+    this.deviceSessions.next({
+      ...this.deviceSessions.getValue(),
+      [id]: deviceSession,
+    });
+    console.log('SDK: Device connected and session created for id', id);
+    return id;
   }
 
-  async sendCommand<T>(
-    device: ConnectedDevice,
-    command: Command<T, any>,
-  ): Promise<T> {
-    if (!device.isConnected()) {
-      throw new Error('Device is not connected');
+  private getDeviceSession(deviceId: string): DeviceSession | undefined {
+    return this.deviceSessions.getValue()[deviceId];
+  }
+
+  async sendCommand<T>(deviceId: string, command: Command<T, any>): Promise<T> {
+    const deviceSession = this.getDeviceSession(deviceId);
+    if (!deviceSession) {
+      console.error(`SDK: No device session found for deviceId ${deviceId}`);
+      throw new Error(`No device session found for deviceId ${deviceId}`);
     }
-    console.log('SDK: sendCommand called with command', command);
-    const packet = command.makePacket();
-    console.log('SDK: sendCommand - packet created', packet.toString());
-    await device.writeCommandToStrapCharacteristic(packet.framedPacket());
-    const responsePacket = await firstValueFrom(
-      device.observeCommandFromStrapCharacteristic().pipe(
-        map((data) => WhoopPacket.fromData(data)),
-        first((responsePacket) => responsePacket.cmd === packet.cmd),
-      ),
-    );
-    console.log(
-      'SDK: sendCommand - response received',
-      responsePacket.toString(),
-    );
-    const result = command.parseResponse(responsePacket);
-    console.log('SDK: sendCommand - result parsed', result);
-    return result;
+    return deviceSession.sendCommand(command);
+  }
+
+  async disconnectFromDevice(deviceId: string): Promise<void> {
+    console.log('SDK: disconnectFromDevice called with id', deviceId);
+    const deviceSession = this.getDeviceSession(deviceId);
+    if (!deviceSession) {
+      console.error(`SDK: No device session found for deviceId ${deviceId}`);
+      throw new Error(`No device session found for deviceId ${deviceId}`);
+    }
+    await deviceSession.disconnect();
   }
 }

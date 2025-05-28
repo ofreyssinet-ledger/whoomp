@@ -5,14 +5,20 @@ export type DiscoveredDevice = {
   name: string;
 };
 
-export type ConnectedDevice = {
+export type TransportConnectedDevice = {
   id: string;
   name: string;
   writeCommandToStrapCharacteristic(data: Uint8Array): Promise<void>;
-  observeCommandFromStrapCharacteristic(): Observable<Uint8Array>;
-  observeEventsFromStrapCharacteristic(): Observable<Uint8Array>;
-  observeDataFromStrapCharacteristic(): Observable<Uint8Array>;
+  commandFromStrapCharacteristicObservable: Observable<Uint8Array>;
+  eventsFromStrapCharacteristicObservable: Observable<Uint8Array>;
+  dataFromStrapCharacteristicObservable: Observable<Uint8Array>;
   disconnect(): Promise<void>;
+  isConnected: () => boolean;
+};
+
+export type ConnectedDevice = {
+  id: string;
+  name: string;
   isConnected: () => boolean;
 };
 
@@ -22,5 +28,5 @@ export interface Transport {
   connectToDevice(
     id: string,
     onDisconnect: () => void,
-  ): Promise<ConnectedDevice>;
+  ): Promise<TransportConnectedDevice>;
 }

@@ -1,6 +1,6 @@
 import {
   type Transport,
-  type ConnectedDevice,
+  type TransportConnectedDevice,
   type DiscoveredDevice,
   BLEDeviceData,
 } from '@whoomp/sdk';
@@ -38,7 +38,7 @@ class WebBleTransport implements Transport {
   async connectToDevice(
     id: string,
     onDisconnect: () => void,
-  ): Promise<ConnectedDevice> {
+  ): Promise<TransportConnectedDevice> {
     let isConnected = false;
     // TODO: this function is experimental in the browser and may not work in all browsers
     const devices = await navigator.bluetooth.getDevices();
@@ -118,15 +118,12 @@ class WebBleTransport implements Transport {
       writeCommandToStrapCharacteristic: async (data: Uint8Array) => {
         await cmdToStrapChar.writeValue(data);
       },
-      observeCommandFromStrapCharacteristic: () => {
-        return cmdFromStrapSubject.asObservable();
-      },
-      observeEventsFromStrapCharacteristic: () => {
-        return eventsFromStrapSubject.asObservable();
-      },
-      observeDataFromStrapCharacteristic: () => {
-        return dataFromStrapSubject.asObservable();
-      },
+      commandFromStrapCharacteristicObservable:
+        cmdFromStrapSubject.asObservable(),
+      eventsFromStrapCharacteristicObservable:
+        eventsFromStrapSubject.asObservable(),
+      dataFromStrapCharacteristicObservable:
+        dataFromStrapSubject.asObservable(),
       disconnect: async () => {
         await server.disconnect();
         handleDisconnection();
