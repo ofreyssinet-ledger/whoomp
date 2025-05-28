@@ -25,23 +25,6 @@ export class Sdk {
   }
 
   /**
-   * Observes connected devices and emits updates when the list changes.
-   * @returns An observable that emits an object mapping device IDs to ConnectedDevice instances.
-   */
-  observeConnectedDevices(): Observable<{ [id: string]: ConnectedDevice }> {
-    console.log('SDK: observeConnectedDevices called');
-    return this.deviceSessions.asObservable().pipe(
-      map((sessions) => {
-        const connectedDevices: Record<string, ConnectedDevice> = {};
-        for (const [id, session] of Object.entries(sessions)) {
-          connectedDevices[id] = session.getConnectedDevice();
-        }
-        return connectedDevices;
-      }),
-    );
-  }
-
-  /**
    * Retrieves a list of discovered devices.
    * @returns An observable that emits an array of discovered devices.
    */
@@ -86,6 +69,23 @@ export class Sdk {
     });
     console.log('SDK: Device connected and session created for id', id);
     return id;
+  }
+
+  /**
+   * Observes connected devices and emits updates when the list changes.
+   * @returns An observable that emits an object mapping device IDs to ConnectedDevice instances.
+   */
+  observeConnectedDevices(): Observable<{ [id: string]: ConnectedDevice }> {
+    console.log('SDK: observeConnectedDevices called');
+    return this.deviceSessions.asObservable().pipe(
+      map((sessions) => {
+        const connectedDevices: Record<string, ConnectedDevice> = {};
+        for (const [id, session] of Object.entries(sessions)) {
+          connectedDevices[id] = session.getConnectedDevice();
+        }
+        return connectedDevices;
+      }),
+    );
   }
 
   private getDeviceSession(deviceId: string): DeviceSession | undefined {

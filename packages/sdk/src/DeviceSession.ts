@@ -138,6 +138,11 @@ export class DeviceSession {
       id: this.connectedDevice.id,
       name: this.connectedDevice.name,
       isConnected: this.connectedDevice.isConnected,
+      /**
+       * TODO:
+       * Here we could add all the public methods to interact with the device.
+       * That way, the SDK doesn't have to expose each method individually.
+       */
     };
   }
 
