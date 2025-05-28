@@ -7,11 +7,10 @@ type GetHelloHarvardResponse = {
 };
 
 export class GetHelloHarvardCommand
-  implements Command<GetHelloHarvardResponse, void>
+  implements Command<GetHelloHarvardResponse>
 {
-  id = 'GetHelloHarvardCommand';
-
-  params = undefined;
+  readonly id = 'GetHelloHarvardCommand';
+  readonly withResponse = true;
 
   makePacket(): WhoopPacket {
     return new WhoopPacket(

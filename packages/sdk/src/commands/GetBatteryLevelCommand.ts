@@ -5,10 +5,10 @@ import { PacketType, CommandNumber, WhoopPacket } from '../WhoopPacket';
 export type GetBatteryLevelResponse = number;
 
 export class GetBatteryLevelCommand
-  implements Command<GetBatteryLevelResponse, void>
+  implements Command<GetBatteryLevelResponse>
 {
-  id = 'GetBatteryLevelCommand';
-  params = undefined;
+  readonly id = 'GetBatteryLevelCommand';
+  readonly withResponse = true;
 
   makePacket(): WhoopPacket {
     return new WhoopPacket(

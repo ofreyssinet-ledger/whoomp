@@ -126,7 +126,6 @@ class WebBleTransport implements Transport {
         dataFromStrapSubject.asObservable(),
       disconnect: async () => {
         await server.disconnect();
-        handleDisconnection();
         device.removeEventListener(
           'gattserverdisconnected',
           handleDisconnection,

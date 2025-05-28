@@ -4,9 +4,9 @@ import { PacketType, CommandNumber, WhoopPacket } from '../WhoopPacket';
 
 export type GetClockResponse = number;
 
-export class GetClockCommand implements Command<GetClockResponse, void> {
-  id = 'GetClockCommand';
-  params = undefined;
+export class GetClockCommand implements Command<GetClockResponse> {
+  readonly id = 'GetClockCommand';
+  readonly withResponse = true;
 
   makePacket(): WhoopPacket {
     return new WhoopPacket(

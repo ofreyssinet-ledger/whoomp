@@ -7,10 +7,10 @@ export type ReportVersionInfoResponse = {
 };
 
 export class ReportVersionInfoCommand
-  implements Command<ReportVersionInfoResponse, void>
+  implements Command<ReportVersionInfoResponse>
 {
-  id = 'ReportVersionInfoCommand';
-  params = undefined;
+  readonly id = 'ReportVersionInfoCommand';
+  readonly withResponse = true;
 
   makePacket(): WhoopPacket {
     return new WhoopPacket(

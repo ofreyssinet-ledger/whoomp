@@ -9,13 +9,36 @@ import {
   type ConnectedDevice,
 } from '@whoomp/sdk';
 import { WebBleTransport } from '@whoomp/transport-web-ble';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 const ConnectedDevice: React.FC<{
   connectedDevice: ConnectedDevice;
   sdk: Sdk;
 }> = ({ connectedDevice, sdk }) => {
   const { id, name } = connectedDevice;
+
+  const [heartRate, setHeartRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    let dead = false;
+    let heartRateSubscription: Subscription | null = null;
+
+    sdk.observeHeartRateEvents(id).then((observable) => {
+      heartRateSubscription = observable.subscribe((events) => {
+        if (dead) return;
+        const lastHeartRate = events[events.length - 1];
+        if (lastHeartRate) {
+          setHeartRate(lastHeartRate.bpm);
+        }
+      });
+    });
+
+    return () => {
+      dead = true;
+      console.log(`Unsubscribing from heart rate for device ${id}`);
+      heartRateSubscription?.unsubscribe();
+    };
+  }, [id, sdk]);
 
   const sendGetHarvardCommand = async () => {
     const helloCommand = new GetHelloHarvardCommand();
@@ -41,6 +64,10 @@ const ConnectedDevice: React.FC<{
     console.log('Response from ReportVersionInfoCommand:', response);
   };
 
+  const toggleRealtimeHR = async () => {
+    await sdk.toggleRealTimeHR(id);
+  };
+
   const disconnect = async () => {
     await sdk.disconnectFromDevice(id);
     console.log(`Disconnected from device with ID: ${id}`);
@@ -50,10 +77,14 @@ const ConnectedDevice: React.FC<{
     <div>
       <p>ID: {id}</p>
       <p>Name: {name}</p>
+      <p>Heart Rate: {heartRate !== null ? `${heartRate} bpm` : 'N/A'}</p>
       <button onClick={sendGetHarvardCommand}>Get Hello Harvard</button>
       <button onClick={sendGetBatteryCommand}>Get Battery Level</button>
       <button onClick={sendGetClockCommand}>Get Clock</button>
       <button onClick={sendReportVersionCommand}>Report Version Info</button>
+      <button onClick={toggleRealtimeHR}>
+        {heartRate !== null ? 'Disable' : 'Enable'} Real-Time HR
+      </button>
       <button onClick={disconnect}>Disconnect</button>
     </div>
   );
@@ -95,7 +126,7 @@ function App() {
           console.log('Connected to device with ID:', connectedDeviceId);
         }}
       >
-        sdk.getDevices()
+        Connect to a device
       </button>
       {Object.values(connectedDevices).length > 0 ? (
         <div>
