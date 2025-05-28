@@ -1,91 +1,174 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+// App.tsx
+import React, {useEffect, useState} from 'react';
 import {
-  Button,
+  SafeAreaView,
   ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
   View,
+  Text,
+  Button,
+  StyleSheet,
 } from 'react-native';
-
 import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+  GetHelloHarvardCommand,
+  GetBatteryLevelCommand,
+  GetClockCommand,
+  ReportVersionInfoCommand,
+  type ConnectedDevice as SDKConnectedDevice,
+  Sdk,
+  ConnectedDevice,
+} from '@whoomp/sdk';
+import {ReactNativeBleTransport} from '@whoomp/transport-rn-ble';
+import {firstValueFrom, Subscription} from 'rxjs';
 
-import {Sdk} from '@whoomp/sdk';
-import {RNBleTransport} from '@whoomp/transport-rn-ble';
+type Props = {
+  connectedDevice: SDKConnectedDevice;
+  sdk: Sdk;
+};
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const ConnectedDeviceItem: React.FC<Props> = ({connectedDevice, sdk}) => {
+  const {id, name} = connectedDevice;
+  const [heartRate, setHeartRate] = useState<number | null>(null);
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  useEffect(() => {
+    let dead = false;
+    let sub: Subscription | null = null;
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    sdk.observeHeartRateEvents(id).then(obs => {
+      sub = obs.subscribe(events => {
+        if (dead) return;
+        const last = events[events.length - 1];
+        if (last) setHeartRate(last.bpm);
+      });
+    });
+
+    return () => {
+      dead = true;
+      sub?.unsubscribe();
+      console.log(`Unsubscribed heart rate from ${id}`);
+    };
+  }, [id, sdk]);
+
+  const send = async (cmd: any, label: string) => {
+    try {
+      const res = await sdk.sendCommand(id, cmd);
+      console.log(`${label} response:`, res);
+    } catch (e) {
+      console.error(label, e);
+    }
   };
 
-  /*
-   * To keep the template simple and small we're adding padding to prevent view
-   * from rendering under the System UI.
-   * For bigger apps the recommendation is to use `react-native-safe-area-context`:
-   * https://github.com/AppAndFlow/react-native-safe-area-context
-   *
-   * You can read more about it here:
-   * https://github.com/react-native-community/discussions-and-proposals/discussions/827
-   */
-  const safePadding = '100';
-
   return (
-    <View style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <View style={{paddingTop: safePadding}} />
+    <View style={styles.deviceContainer}>
+      <Text>ID: {id}</Text>
+      <Text>Name: {name}</Text>
+      <Text>
+        Heart Rate: {heartRate != null ? `${heartRate} bpm` : 'Not streaming'}
+      </Text>
       <Button
-        title="sdk.helloWorld()"
-        onPress={() => {
-          const transport = RNBleTransport;
-          const sdk = new Sdk(transport);
-          sdk.helloWorld();
+        title="Get Hello Harvard"
+        onPress={() =>
+          send(new GetHelloHarvardCommand(), 'GetHelloHarvardCommand')
+        }
+      />
+      <Button
+        title="Get Battery Level"
+        onPress={() =>
+          send(new GetBatteryLevelCommand(), 'GetBatteryLevelCommand')
+        }
+      />
+      <Button
+        title="Get Clock"
+        onPress={() => send(new GetClockCommand(), 'GetClockCommand')}
+      />
+      <Button
+        title="Report Version Info"
+        onPress={() =>
+          send(new ReportVersionInfoCommand(), 'ReportVersionInfoCommand')
+        }
+      />
+      <Button
+        title={
+          heartRate != null ? 'Disable Real-Time HR' : 'Enable Real-Time HR'
+        }
+        onPress={() => sdk.toggleRealTimeHR(id)}
+      />
+      <Button
+        title="Disconnect"
+        color="red"
+        onPress={async () => {
+          await sdk.disconnectFromDevice(id);
+          console.log(`Disconnected ${id}`);
         }}
       />
     </View>
   );
+};
+
+export default function App() {
+  const [sdk] = useState(() => {
+    const transport = new ReactNativeBleTransport();
+    return new Sdk(transport);
+  });
+
+  const [connectedDevices, setConnectedDevices] = useState<{
+    [id: string]: ConnectedDevice;
+  }>({});
+
+  useEffect(() => {
+    const subscription = sdk.observeConnectedDevices().subscribe(devices => {
+      console.log('Connected devices updated:', devices);
+      setConnectedDevices(devices);
+    });
+    return () => {
+      console.log('Unsubscribing from connected devices');
+      subscription.unsubscribe();
+    };
+  }, [sdk]);
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Button
+          title="sdk.helloWorld()"
+          onPress={() => console.log(sdk.helloWorld())}
+        />
+        <View style={styles.spacer} />
+        <Button
+          title="Connect to a WHOOP device"
+          onPress={async () => {
+            const [dev] = await firstValueFrom(sdk.getDevices());
+            console.log('Discovered:', dev);
+            const id = await sdk.connectToDevice(dev.id, () =>
+              console.log(`Disconnected callback for ${dev.id}`),
+            );
+            console.log('Connected:', id);
+          }}
+        />
+        <View style={styles.spacer} />
+        {Object.values(connectedDevices).length > 0 ? (
+          <>
+            <Text style={styles.heading}>Connected Devices</Text>
+            {Object.values(connectedDevices).map(d => (
+              <ConnectedDeviceItem key={d.id} connectedDevice={d} sdk={sdk} />
+            ))}
+          </>
+        ) : (
+          <Text>No connected devices</Text>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  container: {flex: 1},
+  content: {padding: 16},
+  spacer: {height: 16},
+  heading: {fontSize: 18, marginVertical: 8},
+  deviceContainer: {
+    marginVertical: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 8,
   },
 });
-
-export default App;

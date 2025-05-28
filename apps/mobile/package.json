@@ -11,10 +11,12 @@
     "pod": "cd ios && pod install --repo-update"
   },
   "dependencies": {
+    "rxjs": "catalog:",
     "react": "19.0.0",
-    "react-native": "0.79.2",
+    "react-native": "catalog:",
     "@whoomp/sdk": "workspace:*",
-    "@whoomp/transport-rn-ble": "workspace:*"
+    "@whoomp/transport-rn-ble": "workspace:*",
+    "react-native-ble-plx": "catalog:"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

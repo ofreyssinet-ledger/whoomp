@@ -28,9 +28,13 @@
     "rxjs": "catalog:"
   },
   "devDependencies": {
-    "@whoomp/sdk": "workspace:*"
+    "@whoomp/sdk": "workspace:*",
+    "react-native": "catalog:",
+    "react-native-ble-plx": "catalog:"
   },
   "peerDependencies": {
-    "@whoomp/sdk": "workspace:*"
+    "@whoomp/sdk": "workspace:*",
+    "react-native": "catalog:",
+    "react-native-ble-plx": "catalog:"
   }
 }
