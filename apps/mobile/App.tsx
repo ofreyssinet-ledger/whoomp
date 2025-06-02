@@ -1,5 +1,5 @@
 // App.tsx
-import React, {useEffect, useState} from 'react';
+import React, {use, useEffect, useState} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   Text,
   Button,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import {
   GetHelloHarvardCommand,
@@ -17,7 +18,7 @@ import {
   Sdk,
   ConnectedDevice,
 } from '@whoomp/sdk';
-import {ReactNativeBleTransport} from '@whoomp/transport-rn-ble';
+import {ReactNativeBleTransport} from './RNBleTransport';
 import {firstValueFrom, Subscription} from 'rxjs';
 
 type Props = {
@@ -51,6 +52,11 @@ const ConnectedDeviceItem: React.FC<Props> = ({connectedDevice, sdk}) => {
   const send = async (cmd: any, label: string) => {
     try {
       const res = await sdk.sendCommand(id, cmd);
+      Alert.alert(
+        'Command Response',
+        `Response for ${label}:\n${JSON.stringify(res, null, 2)}`,
+        [{text: 'OK'}],
+      );
       console.log(`${label} response:`, res);
     } catch (e) {
       console.error(label, e);
@@ -109,6 +115,12 @@ export default function App() {
     const transport = new ReactNativeBleTransport();
     return new Sdk(transport);
   });
+
+  useEffect(() => {
+    return () => {
+      sdk.destroy();
+    };
+  }, [sdk]);
 
   const [connectedDevices, setConnectedDevices] = useState<{
     [id: string]: ConnectedDevice;

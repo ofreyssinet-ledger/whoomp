@@ -19,6 +19,21 @@ export class Sdk {
     this.transport = transport;
   }
 
+  destroy() {
+    // TODO: do this properly
+    console.log('SDK: destroy called');
+    this.transport.destroy();
+    Object.values(this.deviceSessions.getValue()).forEach((session) => {
+      console.log(
+        'SDK: Releasing session for device',
+        session.getConnectedDevice().id,
+      );
+      session.release();
+    });
+    this.deviceSessions.complete();
+    console.log('SDK: All sessions released and deviceSessions completed');
+  }
+
   helloWorld() {
     console.log('SDK: helloWorld called');
     return this.transport.helloWorld();

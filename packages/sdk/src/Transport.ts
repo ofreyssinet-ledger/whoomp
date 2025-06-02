@@ -29,4 +29,5 @@ export interface Transport {
     id: string,
     onDisconnect: () => void,
   ): Promise<TransportConnectedDevice>;
+  destroy(): void;
 }

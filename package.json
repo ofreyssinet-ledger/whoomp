@@ -22,6 +22,7 @@
     "transport-web": "pnpm --filter @whoomp/transport-web"
   },
   "dependencies": {
-    "@babel/runtime": "^7.27.1"
+    "@babel/runtime": "^7.27.1",
+    "@react-native/codegen": "0.79.2"
   }
 }
