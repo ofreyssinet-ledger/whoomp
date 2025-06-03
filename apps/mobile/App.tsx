@@ -173,7 +173,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1},
+  container: {flex: 1, backgroundColor: '#fff'},
   content: {padding: 16},
   spacer: {height: 16},
   heading: {fontSize: 18, marginVertical: 8},

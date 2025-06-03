@@ -191,8 +191,15 @@ export class ReactNativeBleTransport implements Transport {
     const serviceUUID = BLEDeviceData.WHOOP_SERVICE;
 
     // Connect and discover
+    console.log(`Connecting to device: ${id}`);
     const device: Device = await this.manager.connectToDevice(id);
+    console.log(
+      `Discovering services and characteristics for device: ${device.id}`,
+    );
     await device.discoverAllServicesAndCharacteristics();
+    console.log(
+      `Discovered services and characteristics for device: ${device.id}`,
+    );
 
     // Subjects for each characteristic
     const cmdFromSubj = new Subject<Uint8Array>();
