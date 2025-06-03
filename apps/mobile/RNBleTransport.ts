@@ -191,14 +191,16 @@ export class ReactNativeBleTransport implements Transport {
     const serviceUUID = BLEDeviceData.WHOOP_SERVICE;
 
     // Connect and discover
-    console.log(`Connecting to device: ${id}`);
+    console.log(
+      `[RNBleTransport][connectToDevice] Connecting to device: ${id}`,
+    );
     const device: Device = await this.manager.connectToDevice(id);
     console.log(
-      `Discovering services and characteristics for device: ${device.id}`,
+      `[RNBleTransport][connectToDevice] Discovering services and characteristics for device: ${device.id}`,
     );
     await device.discoverAllServicesAndCharacteristics();
     console.log(
-      `Discovered services and characteristics for device: ${device.id}`,
+      `[RNBleTransport][connectToDevice] Discovered services and characteristics for device: ${device.id}`,
     );
 
     // Subjects for each characteristic
@@ -268,6 +270,10 @@ export class ReactNativeBleTransport implements Transport {
     );
 
     isConnected = true;
+
+    console.log(
+      `[RNBleTransport][connectToDevice] Connected to device: ${device.id} (${device.name})`,
+    );
 
     return {
       id,

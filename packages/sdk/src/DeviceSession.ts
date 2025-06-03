@@ -1,6 +1,5 @@
 import {
   BehaviorSubject,
-  filter,
   first,
   firstValueFrom,
   map,
@@ -10,8 +9,13 @@ import {
 import { Command } from './Command';
 import { TransportConnectedDevice } from './Transport';
 import { PacketType, WhoopPacket } from './WhoopPacket';
-import { ConnectedDevice } from './Transport';
 import { ToggleRealtimeHRCommand } from './commands/ToggleRealtimeHRCommand';
+import { DeviceState, initialDeviceState } from './DeviceState';
+import { GetBatteryLevelCommand } from './commands/GetBatteryLevelCommand';
+import { GetHelloHarvardCommand } from './commands/GetHelloHarvardCommand';
+import { GetClockCommand } from './commands/GetClockCommand';
+import { ReportVersionInfoCommand } from './commands/ReportVersionInfoCommand';
+import { TaskQueue } from './TasksQueue';
 
 type HeartRateEvent = {
   date: Date;
@@ -23,9 +27,21 @@ type LogEvent = {
   message: string;
 };
 
+export type ConnectedDevice = {
+  id: string;
+  name: string;
+  isConnected: () => boolean;
+  deviceStateObservable: Observable<DeviceState>;
+  heartRateFromStrapObservable: Observable<Array<HeartRateEvent>>;
+  logsFromStrapObservable: Observable<Array<LogEvent>>;
+  toggleRealTimeHR: () => Promise<boolean>;
+  sendCommand: <T>(command: Command<T>) => Promise<T>;
+  disconnect: () => Promise<void>;
+};
+
 export class DeviceSession {
   /**
-   * Packets from the stap characteristic
+   * Packets from the strap characteristic
    */
   private eventPacketsFromStrap: Observable<WhoopPacket>;
   private dataPacketsFromStrap: Observable<WhoopPacket>;
@@ -35,17 +51,20 @@ export class DeviceSession {
    * Realtime data from strap
    */
 
-  logsFromStrap: BehaviorSubject<Array<LogEvent>>;
-  heartRateFromStrap: BehaviorSubject<Array<HeartRateEvent>>;
+  private logsFromStrap: BehaviorSubject<Array<LogEvent>>;
+  private heartRateFromStrap: BehaviorSubject<Array<HeartRateEvent>>;
 
   private dataStreamSubscription: Subscription;
 
+  /**
+   * Task queue to ensure commands are sent and their responses are processed in order.
+   */
+  private taskQueue: TaskQueue = new TaskQueue();
+
+  private deviceStateSubject: BehaviorSubject<DeviceState> =
+    new BehaviorSubject(initialDeviceState);
+
   constructor(private readonly connectedDevice: TransportConnectedDevice) {
-    console.log(
-      'SDK: DeviceSession created for device',
-      connectedDevice.id,
-      connectedDevice.name,
-    );
     this.eventPacketsFromStrap =
       connectedDevice.eventsFromStrapCharacteristicObservable.pipe(
         map((data) => WhoopPacket.fromData(data)),
@@ -70,7 +89,7 @@ export class DeviceSession {
             bpm: packet.data[5],
           };
           console.log(
-            'SDK: Heart rate event received from strap',
+            '[DeviceSession][dataStreamSubscription] Heart rate event received from strap',
             heartRateEvent,
           );
           this.heartRateFromStrap.next([
@@ -83,11 +102,16 @@ export class DeviceSession {
             date: new Date(),
             message: logMessage,
           };
-          console.log('SDK: Log event received from strap', logEvent);
+          console.log(
+            '[DeviceSession][dataStreamSubscription] Log event received from strap',
+            logEvent,
+          );
           this.logsFromStrap.next([...this.logsFromStrap.getValue(), logEvent]);
         }
       },
     );
+
+    this.monitorDeviceState();
   }
 
   /**
@@ -96,10 +120,58 @@ export class DeviceSession {
    */
   release() {
     console.log(
-      'SDK: Releasing DeviceSession for device',
+      '[DeviceSession][release] Releasing DeviceSession for device',
       this.connectedDevice.id,
     );
     this.dataStreamSubscription.unsubscribe();
+    if (this.monitoringTimeout) {
+      clearTimeout(this.monitoringTimeout);
+      this.monitoringTimeout = null;
+    }
+  }
+
+  monitoringInterval: number = 5000; // 5 seconds
+  monitoringTimeout: ReturnType<typeof setTimeout> | null = null;
+  async monitorDeviceState() {
+    console.log(
+      '[DeviceSession][monitorDeviceState] called for device',
+      this.connectedDevice.id,
+    );
+    const versionInfo = await this.sendCommand(new ReportVersionInfoCommand());
+    this.deviceStateSubject.next({
+      ...initialDeviceState,
+      versionInfo,
+    });
+    const poll = async () => {
+      try {
+        console.log(
+          '[DeviceSession][monitorDeviceState] Polling: monitoring device state for',
+          this.connectedDevice.id,
+        );
+        const batteryLevel = await this.sendCommand(
+          new GetBatteryLevelCommand(),
+        );
+        const { isWorn, charging } = await this.sendCommand(
+          new GetHelloHarvardCommand(),
+        );
+        const clock = await this.sendCommand(new GetClockCommand());
+
+        const newState: DeviceState = {
+          ...this.deviceStateSubject.getValue(),
+          batteryLevel,
+          isWorn,
+          charging,
+          clock,
+        };
+
+        this.deviceStateSubject.next(newState);
+      } catch (error) {
+        console.error('Error monitoring device state:', error);
+      } finally {
+        this.monitoringTimeout = setTimeout(poll, this.monitoringInterval);
+      }
+    };
+    poll();
   }
 
   parseLogData(data: Uint8Array): string {
@@ -117,7 +189,7 @@ export class DeviceSession {
         i + 2 < slicedData.length
       ) {
         i += 2; // Skip the next two bytes safely
-        console.log('removed bad');
+        // console.log('removed bad');
       } else {
         cleanedData.push(slicedData[i]);
       }
@@ -133,36 +205,26 @@ export class DeviceSession {
     return decodedString;
   }
 
-  getConnectedDevice(): ConnectedDevice {
-    return {
-      id: this.connectedDevice.id,
-      name: this.connectedDevice.name,
-      isConnected: this.connectedDevice.isConnected,
-      /**
-       * TODO:
-       * Here we could add all the public methods to interact with the device.
-       * That way, the SDK doesn't have to expose each method individually.
-       */
-    };
-  }
-
   /**
-   *
+   * Does the actual work of sending a command to the strap.
+   * This method is private and should not be called directly.
+   * Use `sendCommand` instead.
    * @param command
-   * @returns
+   * @returns the parsed response from the command
    */
-  async sendCommand<T>(command: Command<T>) {
+  private async sendCommandInternal<T>(command: Command<T>) {
     if (!this.connectedDevice.isConnected()) {
       throw new Error('Device is not connected');
     }
-    console.log('SDK: sendCommand called with command', command);
+    console.log(
+      '[DeviceSession][sendCommandInternal] sendCommand called with command',
+      command,
+    );
     const packet = command.makePacket();
-    console.log('SDK: sendCommand - packet created', packet.toString());
     await this.connectedDevice.writeCommandToStrapCharacteristic(
       packet.framedPacket(),
     );
     if (!command.withResponse) {
-      console.log('SDK: sendCommand - command sent without response');
       return command.parseResponse(packet);
     }
     const responsePacket = await firstValueFrom(
@@ -170,21 +232,34 @@ export class DeviceSession {
         first((responsePacket) => responsePacket.cmd === packet.cmd),
       ),
     );
-    console.log(
-      'SDK: sendCommand - response received',
-      responsePacket.toString(),
-    );
     const result = command.parseResponse(responsePacket);
-    console.log('SDK: sendCommand - result parsed', result);
+    console.log('[DeviceSession][sendCommandInternal] result parsed', result);
     return result;
   }
 
+  /**
+   * Sends a command to the strap and returns the response.
+   * @param command The command to send
+   * @returns The parsed response from the command
+   */
+  async sendCommand<T>(command: Command<T>): Promise<T> {
+    console.log(
+      '[DeviceSession][sendCommand] sendCommand called for device',
+      this.connectedDevice.id,
+    );
+    return this.taskQueue.addTask(() => this.sendCommandInternal(command));
+  }
+
   private realtimeHREnabled = false;
-  async toggleRealTimeHR() {
+  private async toggleRealTimeHR(): Promise<boolean> {
     const newValue = !this.realtimeHREnabled;
     const command = new ToggleRealtimeHRCommand(newValue);
-    await this.sendCommand(command);
+    await this.sendCommandInternal(command);
     this.realtimeHREnabled = newValue;
+    this.deviceStateSubject.next({
+      ...this.deviceStateSubject.getValue(),
+      realtimeHeartRateEnabled: newValue,
+    });
     if (!newValue) {
       // If we are disabling realtime HR, clear the heart rate data
       this.heartRateFromStrap.next([
@@ -195,11 +270,32 @@ export class DeviceSession {
         },
       ]);
     }
+    return this.realtimeHREnabled;
+  }
+
+  getConnectedDevice(): ConnectedDevice {
+    return {
+      id: this.connectedDevice.id,
+      name: this.connectedDevice.name,
+      isConnected: this.connectedDevice.isConnected,
+      deviceStateObservable: this.deviceStateSubject.asObservable(),
+      logsFromStrapObservable: this.logsFromStrap.asObservable(),
+      heartRateFromStrapObservable: this.heartRateFromStrap.asObservable(),
+      toggleRealTimeHR: () => this.toggleRealTimeHR(),
+      sendCommand: <T>(command: Command<T>) => this.sendCommand(command),
+      disconnect: () => this.disconnect(),
+    };
   }
 
   async disconnect() {
-    console.log('SDK: disconnect called for device', this.connectedDevice.id);
+    console.log(
+      '[DeviceSession][disconnect] disconnect called for device',
+      this.connectedDevice.id,
+    );
     await this.connectedDevice.disconnect();
-    console.log('SDK: Device disconnected', this.connectedDevice.id);
+    console.log(
+      '[DeviceSession][disconnect] Device disconnected',
+      this.connectedDevice.id,
+    );
   }
 }

@@ -1,75 +1,75 @@
 import { useEffect, useState } from 'react';
 import './App.css';
 import {
-  GetHelloHarvardCommand,
   Sdk,
-  GetBatteryLevelCommand,
-  GetClockCommand,
-  ReportVersionInfoCommand,
-  type ConnectedDevice,
+  type ConnectedDevice as SDKConnectedDevice,
+  type DeviceState,
 } from '@whoomp/sdk';
 import { WebBleTransport } from '@whoomp/transport-web-ble';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
-const ConnectedDevice: React.FC<{
-  connectedDevice: ConnectedDevice;
-  sdk: Sdk;
-}> = ({ connectedDevice, sdk }) => {
-  const { id, name } = connectedDevice;
+const useDeviceState = (
+  connectedDevice: SDKConnectedDevice,
+): DeviceState | null => {
+  const [deviceState, setDeviceState] = useState<DeviceState | null>(null);
 
+  useEffect(() => {
+    let dead = false;
+    const stateSub = connectedDevice.deviceStateObservable.subscribe(
+      (state) => {
+        if (dead) return;
+        setDeviceState(state);
+        console.log(`Device state updated for ${connectedDevice.id}:`, state);
+      },
+    );
+
+    return () => {
+      dead = true;
+      stateSub.unsubscribe();
+      console.log(`Unsubscribed device state for ${connectedDevice.id}`);
+    };
+  }, [connectedDevice]);
+
+  return deviceState;
+};
+
+const useHeartRate = (connectedDevice: SDKConnectedDevice): number | null => {
   const [heartRate, setHeartRate] = useState<number | null>(null);
 
   useEffect(() => {
     let dead = false;
-    let heartRateSubscription: Subscription | null = null;
-
-    sdk.observeHeartRateEvents(id).then((observable) => {
-      heartRateSubscription = observable.subscribe((events) => {
+    const hrSub = connectedDevice.heartRateFromStrapObservable.subscribe(
+      (events) => {
         if (dead) return;
-        const lastHeartRate = events[events.length - 1];
-        if (lastHeartRate) {
-          setHeartRate(lastHeartRate.bpm);
-        }
-      });
-    });
+        const last = events[events.length - 1];
+        if (last) setHeartRate(last.bpm);
+      },
+    );
 
     return () => {
       dead = true;
-      console.log(`Unsubscribing from heart rate for device ${id}`);
-      heartRateSubscription?.unsubscribe();
+      hrSub.unsubscribe();
+      console.log(`Unsubscribed heart rate from ${connectedDevice.id}`);
     };
-  }, [id, sdk]);
+  }, [connectedDevice]);
 
-  const sendGetHarvardCommand = async () => {
-    const helloCommand = new GetHelloHarvardCommand();
-    const response = await sdk.sendCommand(id, helloCommand);
-    console.log('Response from GetHelloHarvardCommand:', response);
-  };
+  return heartRate;
+};
 
-  const sendGetBatteryCommand = async () => {
-    const batteryCommand = new GetBatteryLevelCommand();
-    const response = await sdk.sendCommand(id, batteryCommand);
-    console.log('Response from GetBatteryLevelCommand:', response);
-  };
+const ConnectedDevice: React.FC<{
+  connectedDevice: SDKConnectedDevice;
+}> = ({ connectedDevice }) => {
+  const { id, name } = connectedDevice;
 
-  const sendGetClockCommand = async () => {
-    const clockCommand = new GetClockCommand();
-    const response = await sdk.sendCommand(id, clockCommand);
-    console.log('Response from GetClockCommand:', response);
-  };
-
-  const sendReportVersionCommand = async () => {
-    const versionCommand = new ReportVersionInfoCommand();
-    const response = await sdk.sendCommand(id, versionCommand);
-    console.log('Response from ReportVersionInfoCommand:', response);
-  };
+  const heartRate = useHeartRate(connectedDevice);
+  const deviceState = useDeviceState(connectedDevice);
 
   const toggleRealtimeHR = async () => {
-    await sdk.toggleRealTimeHR(id);
+    await connectedDevice.toggleRealTimeHR();
   };
 
   const disconnect = async () => {
-    await sdk.disconnectFromDevice(id);
+    await connectedDevice.disconnect();
     console.log(`Disconnected from device with ID: ${id}`);
   };
 
@@ -78,10 +78,7 @@ const ConnectedDevice: React.FC<{
       <p>ID: {id}</p>
       <p>Name: {name}</p>
       <p>Heart Rate: {heartRate !== null ? `${heartRate} bpm` : 'N/A'}</p>
-      <button onClick={sendGetHarvardCommand}>Get Hello Harvard</button>
-      <button onClick={sendGetBatteryCommand}>Get Battery Level</button>
-      <button onClick={sendGetClockCommand}>Get Clock</button>
-      <button onClick={sendReportVersionCommand}>Report Version Info</button>
+      <pre>Device State: {JSON.stringify(deviceState, null, 2)}</pre>
       <button onClick={toggleRealtimeHR}>
         {heartRate !== null ? 'Disable' : 'Enable'} Real-Time HR
       </button>
@@ -97,7 +94,7 @@ function App() {
   });
 
   const [connectedDevices, setConnectedDevices] = useState<{
-    [id: string]: ConnectedDevice;
+    [id: string]: SDKConnectedDevice;
   }>({});
 
   useEffect(() => {
@@ -118,12 +115,16 @@ function App() {
       </button>
       <button
         onClick={async () => {
-          const [device] = await firstValueFrom(sdk.getDevices());
-          console.log('Discovered devices:', device);
-          const connectedDeviceId = await sdk.connectToDevice(device.id, () => {
-            console.log(`Device ${device.id} disconnected`);
-          });
-          console.log('Connected to device with ID:', connectedDeviceId);
+          try {
+            const [device] = await firstValueFrom(sdk.getDevices());
+            console.log('Discovered devices:', device);
+            const connectedDevice = await sdk.connectToDevice(device.id, () => {
+              console.log(`Device ${device.id} disconnected`);
+            });
+            console.log('Connected to device', connectedDevice);
+          } catch (error) {
+            console.error(error);
+          }
         }}
       >
         Connect to a device
@@ -132,11 +133,7 @@ function App() {
         <div>
           <h2>Connected Devices</h2>
           {Object.values(connectedDevices).map((device) => (
-            <ConnectedDevice
-              key={device.id}
-              connectedDevice={device}
-              sdk={sdk}
-            />
+            <ConnectedDevice key={device.id} connectedDevice={device} />
           ))}
         </div>
       ) : (

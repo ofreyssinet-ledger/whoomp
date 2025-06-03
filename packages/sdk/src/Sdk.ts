@@ -1,12 +1,7 @@
 import { BehaviorSubject, map, Observable } from 'rxjs';
-import {
-  TransportConnectedDevice,
-  DiscoveredDevice,
-  type Transport,
-  ConnectedDevice,
-} from './Transport';
+import { DiscoveredDevice, type Transport } from './Transport';
 import { Command } from './Command';
-import { DeviceSession } from './DeviceSession';
+import { ConnectedDevice, DeviceSession } from './DeviceSession';
 
 export class Sdk {
   transport: Transport;
@@ -54,17 +49,26 @@ export class Sdk {
    * @param onDisconnect Callback function to be called when the device disconnects.
    * @returns The ID of the connected device.
    */
-  async connectToDevice(id: string, onDisconnect: () => void): Promise<string> {
-    console.log('SDK: connectToDevice called with id', id);
+  async connectToDevice(
+    id: string,
+    onDisconnect: () => void,
+  ): Promise<ConnectedDevice> {
+    console.log('[SDK][connectToDevice] connectToDevice called with id', id);
 
     const existingSession = this.getDeviceSession(id);
     if (existingSession) {
-      console.log('SDK: Device session already exists for id', id);
-      return id; // Return early if the session already exists
+      console.log(
+        '[SDK][connectToDevice] Device session already exists for id',
+        id,
+      );
+      return existingSession.getConnectedDevice(); // Return early if the session already exists
     }
 
     const onDisconnectWrapper = () => {
-      console.log('SDK: Device disconnected, cleaning up session for id', id);
+      console.log(
+        '[SDK][connectToDevice] Device disconnected, cleaning up session for id',
+        id,
+      );
       onDisconnect();
       const { [id]: sessionToRemove, ...remainingSessions } =
         this.deviceSessions.getValue();
@@ -77,13 +81,31 @@ export class Sdk {
       id,
       onDisconnectWrapper,
     );
-    const deviceSession = new DeviceSession(connectedDevice);
-    this.deviceSessions.next({
-      ...this.deviceSessions.getValue(),
-      [id]: deviceSession,
-    });
-    console.log('SDK: Device connected and session created for id', id);
-    return id;
+    console.log(
+      '[SDK][connectToDevice] Device connected, creating session for id',
+      id,
+    );
+    try {
+      const deviceSession = new DeviceSession(connectedDevice);
+      this.deviceSessions.next({
+        ...this.deviceSessions.getValue(),
+        [id]: deviceSession,
+      });
+      console.log(
+        '[SDK][connectToDevice] Device connected and session created for id',
+        id,
+      );
+      return deviceSession.getConnectedDevice();
+    } catch (error) {
+      console.error(
+        '[SDK][connectToDevice] Error creating device session for id',
+        id,
+        error,
+      );
+      // Clean up the connected device if session creation fails
+      await connectedDevice.disconnect();
+      throw new Error(`Failed to create device session for id ${id}: ${error}`);
+    }
   }
 
   /**
@@ -135,35 +157,5 @@ export class Sdk {
       throw new Error(`No device session found for deviceId ${deviceId}`);
     }
     await deviceSession.disconnect();
-  }
-
-  /**
-   * Observes heart rate events from a connected device.
-   * @param deviceId The ID of the device to observe heart rate events from.
-   * @returns An observable that emits heart rate events.
-   */
-  async observeHeartRateEvents(deviceId: string) {
-    console.log('SDK: observeHeartRateEvents called for deviceId', deviceId);
-    const deviceSession = this.getDeviceSession(deviceId);
-    if (!deviceSession) {
-      console.error(`SDK: No device session found for deviceId ${deviceId}`);
-      throw new Error(`No device session found for deviceId ${deviceId}`);
-    }
-    return deviceSession.heartRateFromStrap;
-  }
-
-  /**
-   * Toggles real-time heart rate monitoring for a connected device.
-   * @param deviceId The ID of the device to toggle real-time heart rate for.
-   * @returns A promise that resolves when the toggle operation is complete.
-   */
-  async toggleRealTimeHR(deviceId: string) {
-    console.log('SDK: toggleRealTimeHR called for deviceId', deviceId);
-    const deviceSession = this.getDeviceSession(deviceId);
-    if (!deviceSession) {
-      console.error(`SDK: No device session found for deviceId ${deviceId}`);
-      throw new Error(`No device session found for deviceId ${deviceId}`);
-    }
-    return deviceSession.toggleRealTimeHR();
   }
 }

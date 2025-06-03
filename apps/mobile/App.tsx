@@ -17,41 +17,21 @@ import {
   type ConnectedDevice as SDKConnectedDevice,
   Sdk,
   ConnectedDevice,
+  DeviceState,
 } from '@whoomp/sdk';
 import {ReactNativeBleTransport} from './RNBleTransport';
 import {firstValueFrom, Subscription} from 'rxjs';
 
-type Props = {
+type ConnectedDeviceProps = {
   connectedDevice: SDKConnectedDevice;
-  sdk: Sdk;
 };
 
-const ConnectedDeviceItem: React.FC<Props> = ({connectedDevice, sdk}) => {
-  const {id, name} = connectedDevice;
-  const [heartRate, setHeartRate] = useState<number | null>(null);
-
-  useEffect(() => {
-    let dead = false;
-    let sub: Subscription | null = null;
-
-    sdk.observeHeartRateEvents(id).then(obs => {
-      sub = obs.subscribe(events => {
-        if (dead) return;
-        const last = events[events.length - 1];
-        if (last) setHeartRate(last.bpm);
-      });
-    });
-
-    return () => {
-      dead = true;
-      sub?.unsubscribe();
-      console.log(`Unsubscribed heart rate from ${id}`);
-    };
-  }, [id, sdk]);
-
+const SendCommandsComponent: React.FC<{
+  connectedDevice: SDKConnectedDevice;
+}> = ({connectedDevice}) => {
   const send = async (cmd: any, label: string) => {
     try {
-      const res = await sdk.sendCommand(id, cmd);
+      const res = await connectedDevice.sendCommand(cmd);
       Alert.alert(
         'Command Response',
         `Response for ${label}:\n${JSON.stringify(res, null, 2)}`,
@@ -64,12 +44,7 @@ const ConnectedDeviceItem: React.FC<Props> = ({connectedDevice, sdk}) => {
   };
 
   return (
-    <View style={styles.deviceContainer}>
-      <Text>ID: {id}</Text>
-      <Text>Name: {name}</Text>
-      <Text>
-        Heart Rate: {heartRate != null ? `${heartRate} bpm` : 'Not streaming'}
-      </Text>
+    <>
       <Button
         title="Get Hello Harvard"
         onPress={() =>
@@ -92,20 +67,92 @@ const ConnectedDeviceItem: React.FC<Props> = ({connectedDevice, sdk}) => {
           send(new ReportVersionInfoCommand(), 'ReportVersionInfoCommand')
         }
       />
+    </>
+  );
+};
+
+const useDeviceState = (
+  connectedDevice: SDKConnectedDevice,
+): DeviceState | null => {
+  const [deviceState, setDeviceState] = useState<DeviceState | null>(null);
+
+  useEffect(() => {
+    let dead = false;
+    const stateSub = connectedDevice.deviceStateObservable.subscribe(state => {
+      if (dead) return;
+      setDeviceState(state);
+      console.log(`Device state updated for ${connectedDevice.id}:`, state);
+    });
+
+    return () => {
+      dead = true;
+      stateSub.unsubscribe();
+      console.log(`Unsubscribed device state for ${connectedDevice.id}`);
+    };
+  }, [connectedDevice]);
+
+  return deviceState;
+};
+
+const useHeartRate = (connectedDevice: SDKConnectedDevice): number | null => {
+  const [heartRate, setHeartRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    let dead = false;
+    const hrSub = connectedDevice.heartRateFromStrapObservable.subscribe(
+      events => {
+        if (dead) return;
+        const last = events[events.length - 1];
+        if (last) setHeartRate(last.bpm);
+      },
+    );
+
+    return () => {
+      dead = true;
+      hrSub.unsubscribe();
+      console.log(`Unsubscribed heart rate from ${connectedDevice.id}`);
+    };
+  }, [connectedDevice]);
+
+  return heartRate;
+};
+
+const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
+  connectedDevice,
+}) => {
+  const {id, name} = connectedDevice;
+  const deviceState = useDeviceState(connectedDevice);
+  const heartRate = useHeartRate(connectedDevice);
+
+  return (
+    <View style={styles.deviceContainer}>
+      <Text style={{fontSize: 14, fontWeight: 'bold'}}>Name: {name}</Text>
+      <Text style={{fontSize: 14, color: 'grey'}}>ID: {id}</Text>
+      <View style={{height: 8}} />
+      <Text style={{fontSize: 13, fontWeight: 'bold'}}>
+        Heart Rate: {heartRate != null ? `${heartRate} bpm` : 'Not streaming'}
+      </Text>
+      {/* <SendCommandsComponent connectedDevice={connectedDevice} /> */}
       <Button
         title={
-          heartRate != null ? 'Disable Real-Time HR' : 'Enable Real-Time HR'
+          deviceState?.realtimeHeartRateEnabled
+            ? 'Disable Real-Time HR'
+            : 'Enable Real-Time HR'
         }
-        onPress={() => sdk.toggleRealTimeHR(id)}
+        onPress={() => connectedDevice.toggleRealTimeHR()}
       />
       <Button
         title="Disconnect"
         color="red"
         onPress={async () => {
-          await sdk.disconnectFromDevice(id);
+          await connectedDevice.disconnect();
           console.log(`Disconnected ${id}`);
         }}
       />
+      <Text>
+        Device State:{' '}
+        {deviceState ? JSON.stringify(deviceState, null, 2) : 'N/A'}
+      </Text>
     </View>
   );
 };
@@ -161,7 +208,7 @@ export default function App() {
           <>
             <Text style={styles.heading}>Connected Devices</Text>
             {Object.values(connectedDevices).map(d => (
-              <ConnectedDeviceItem key={d.id} connectedDevice={d} sdk={sdk} />
+              <ConnectedDeviceItem key={d.id} connectedDevice={d} />
             ))}
           </>
         ) : (
