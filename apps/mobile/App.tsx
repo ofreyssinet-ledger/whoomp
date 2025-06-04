@@ -11,7 +11,7 @@ import {
   Sdk,
   type ConnectedDevice as SDKConnectedDevice,
 } from '@whoomp/sdk';
-import React, {useEffect, useState} from 'react';
+import React, {use, useEffect, useMemo, useState} from 'react';
 import {
   Alert,
   Button,
@@ -21,11 +21,26 @@ import {
   Text,
   View,
 } from 'react-native';
-import {firstValueFrom, throttleTime} from 'rxjs';
+import {firstValueFrom, Observable, throttleTime} from 'rxjs';
 import {ReactNativeBleTransport} from './RNBleTransport';
 
 type ConnectedDeviceProps = {
   connectedDevice: SDKConnectedDevice;
+};
+
+const useStateFromObservable: <T>(
+  observable: Observable<T>,
+) => T | null = observable => {
+  const [state, setState] = useState<T | null>(null);
+
+  useEffect(() => {
+    const subscription = observable.subscribe(value => {
+      setState(value);
+    });
+    return () => subscription.unsubscribe();
+  }, [observable]);
+
+  return state;
 };
 
 const SendCommandsComponent: React.FC<{
@@ -76,77 +91,25 @@ const SendCommandsComponent: React.FC<{
 const useDeviceState = (
   connectedDevice: SDKConnectedDevice,
 ): DeviceState | null => {
-  const [deviceState, setDeviceState] = useState<DeviceState | null>(null);
-
-  useEffect(() => {
-    let dead = false;
-    const stateSub = connectedDevice.deviceStateObservable.subscribe(state => {
-      if (dead) return;
-      setDeviceState(state);
-      console.log(`Device state updated for ${connectedDevice.id}:`, state);
-    });
-
-    return () => {
-      dead = true;
-      stateSub.unsubscribe();
-      console.log(`Unsubscribed device state for ${connectedDevice.id}`);
-    };
-  }, [connectedDevice]);
-
-  return deviceState;
+  return useStateFromObservable(connectedDevice.deviceStateObservable);
 };
 
 const useDeviceSessionState = (
   connectedDevice: SDKConnectedDevice,
 ): DeviceSessionState | null => {
-  const [deviceState, setDeviceState] = useState<DeviceSessionState | null>(
-    null,
-  );
-
-  useEffect(() => {
-    let dead = false;
-    const stateSub = connectedDevice.deviceSessionState.subscribe(state => {
-      if (dead) return;
-      setDeviceState(state);
-      console.log(
-        `Device session state updated for ${connectedDevice.id}:`,
-        state,
-      );
-    });
-
-    return () => {
-      dead = true;
-      stateSub.unsubscribe();
-      console.log(
-        `Unsubscribed device session state for ${connectedDevice.id}`,
-      );
-    };
-  }, [connectedDevice]);
-
-  return deviceState;
+  return useStateFromObservable(connectedDevice.deviceSessionState);
 };
 
 const useHeartRate = (connectedDevice: SDKConnectedDevice): number | null => {
-  const [heartRate, setHeartRate] = useState<number | null>(null);
-
-  useEffect(() => {
-    let dead = false;
-    const hrSub = connectedDevice.heartRateFromStrapObservable.subscribe(
-      events => {
-        if (dead) return;
-        const last = events[events.length - 1];
-        if (last) setHeartRate(last.bpm);
-      },
-    );
-
-    return () => {
-      dead = true;
-      hrSub.unsubscribe();
-      console.log(`Unsubscribed heart rate from ${connectedDevice.id}`);
-    };
-  }, [connectedDevice]);
-
-  return heartRate;
+  const heartRateEvents = useStateFromObservable(
+    connectedDevice.heartRateFromStrapObservable,
+  );
+  if (!heartRateEvents || heartRateEvents.length === 0) {
+    return null;
+  }
+  // Return the most recent heart rate event's BPM
+  const lastEvent = heartRateEvents[heartRateEvents.length - 1];
+  return lastEvent.bpm;
 };
 
 const useMostRecentHistoricalData = (
@@ -157,26 +120,11 @@ const useMostRecentHistoricalData = (
    */
   throttleTimeMs: number = 1000,
 ): {date: Date; heartRate: number} | null => {
-  const [mostRecent, setMostRecent] =
-    useState<ParsedHistoricalDataPacket | null>(null);
-
-  useEffect(() => {
-    let dead = false;
-    const mostRecentPacketSub = connectedDevice.mostRecentHistoricalDataPacket
-      .pipe(throttleTime(throttleTimeMs))
-      .subscribe(packet => {
-        if (dead) return;
-        setMostRecent(packet);
-      });
-
-    return () => {
-      dead = true;
-      mostRecentPacketSub.unsubscribe();
-      console.log(`Unsubscribed historical data from ${connectedDevice.id}`);
-    };
-  }, [connectedDevice]);
-
-  return mostRecent;
+  return useStateFromObservable(
+    connectedDevice.mostRecentHistoricalDataPacket.pipe(
+      throttleTime(throttleTimeMs),
+    ),
+  );
 };
 
 const KeepAwake = () => {
@@ -314,20 +262,12 @@ export default function App() {
     };
   }, [sdk]);
 
-  const [connectedDevices, setConnectedDevices] = useState<{
-    [id: string]: ConnectedDevice;
-  }>({});
-
-  useEffect(() => {
-    const subscription = sdk.observeConnectedDevices().subscribe(devices => {
-      console.log('Connected devices updated:', devices);
-      setConnectedDevices(devices);
-    });
-    return () => {
-      console.log('Unsubscribing from connected devices');
-      subscription.unsubscribe();
-    };
+  const connectedDevicesObservable = useMemo(() => {
+    return sdk.observeConnectedDevices();
   }, [sdk]);
+
+  const connectedDevices =
+    useStateFromObservable(connectedDevicesObservable) ?? {};
 
   return (
     <SafeAreaView style={styles.container}>
