@@ -1,26 +1,28 @@
 // App.tsx
-import React, {use, useEffect, useState} from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  View,
-  Text,
-  Button,
-  StyleSheet,
-  Alert,
-} from 'react-native';
-import {
-  GetHelloHarvardCommand,
+  ConnectedDevice,
+  DeviceSessionState,
+  DeviceState,
   GetBatteryLevelCommand,
   GetClockCommand,
+  GetHelloHarvardCommand,
+  ParsedHistoricalDataPacket,
   ReportVersionInfoCommand,
-  type ConnectedDevice as SDKConnectedDevice,
   Sdk,
-  ConnectedDevice,
-  DeviceState,
+  type ConnectedDevice as SDKConnectedDevice,
 } from '@whoomp/sdk';
+import React, {useEffect, useState} from 'react';
+import {
+  Alert,
+  Button,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {firstValueFrom, throttleTime} from 'rxjs';
 import {ReactNativeBleTransport} from './RNBleTransport';
-import {firstValueFrom, Subscription} from 'rxjs';
 
 type ConnectedDeviceProps = {
   connectedDevice: SDKConnectedDevice;
@@ -94,6 +96,36 @@ const useDeviceState = (
   return deviceState;
 };
 
+const useDeviceSessionState = (
+  connectedDevice: SDKConnectedDevice,
+): DeviceSessionState | null => {
+  const [deviceState, setDeviceState] = useState<DeviceSessionState | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let dead = false;
+    const stateSub = connectedDevice.deviceSessionState.subscribe(state => {
+      if (dead) return;
+      setDeviceState(state);
+      console.log(
+        `Device session state updated for ${connectedDevice.id}:`,
+        state,
+      );
+    });
+
+    return () => {
+      dead = true;
+      stateSub.unsubscribe();
+      console.log(
+        `Unsubscribed device session state for ${connectedDevice.id}`,
+      );
+    };
+  }, [connectedDevice]);
+
+  return deviceState;
+};
+
 const useHeartRate = (connectedDevice: SDKConnectedDevice): number | null => {
   const [heartRate, setHeartRate] = useState<number | null>(null);
 
@@ -117,6 +149,78 @@ const useHeartRate = (connectedDevice: SDKConnectedDevice): number | null => {
   return heartRate;
 };
 
+const useMostRecentHistoricalData = (
+  connectedDevice: SDKConnectedDevice,
+  /**
+   * Throttle time in milliseconds for historical data updates.
+   * Use at least 1000ms to avoid overwhelming the UI.
+   */
+  throttleTimeMs: number = 1000,
+): {date: Date; heartRate: number} | null => {
+  const [mostRecent, setMostRecent] =
+    useState<ParsedHistoricalDataPacket | null>(null);
+
+  useEffect(() => {
+    let dead = false;
+    const mostRecentPacketSub = connectedDevice.mostRecentHistoricalDataPacket
+      .pipe(throttleTime(throttleTimeMs))
+      .subscribe(packet => {
+        if (dead) return;
+        setMostRecent(packet);
+      });
+
+    return () => {
+      dead = true;
+      mostRecentPacketSub.unsubscribe();
+      console.log(`Unsubscribed historical data from ${connectedDevice.id}`);
+    };
+  }, [connectedDevice]);
+
+  return mostRecent;
+};
+
+const MostRecentHistoricalDataPacket: React.FC<{
+  connectedDevice: SDKConnectedDevice;
+}> = ({connectedDevice}) => {
+  const mostRecent = useMostRecentHistoricalData(connectedDevice, 1000);
+  const deviceSessionState = useDeviceSessionState(connectedDevice);
+
+  if (!mostRecent) {
+    return (
+      <View style={styles.dataContainer}>
+        <Text>No historical data available</Text>;
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.dataContainer}>
+      <Text style={{fontSize: 14, fontWeight: 'bold'}}>
+        Most Recent Historical Data
+      </Text>
+      <Text style={{fontSize: 14, color: 'grey'}}>
+        Date: {mostRecent.date.toISOString()}
+      </Text>
+      <Text style={{fontSize: 13, fontWeight: 'bold'}}>
+        Heart Rate: {mostRecent.heartRate} bpm
+      </Text>
+      <View style={{marginTop: 8}}>
+        {deviceSessionState?.downloadingHistoricalData ? (
+          <Text style={{fontSize: 14, fontWeight: 'bold', color: 'orange'}}>
+            Streaming historical data...{'\n'}⚠️ Do not quit the app or
+            disconnect the device while streaming historical data. It will be
+            lost if you do so.
+          </Text>
+        ) : (
+          <Text style={{fontSize: 14, fontStyle: 'italic'}}>
+            Not currently streaming historical data
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+};
+
 const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
   connectedDevice,
 }) => {
@@ -128,10 +232,34 @@ const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
     <View style={styles.deviceContainer}>
       <Text style={{fontSize: 14, fontWeight: 'bold'}}>Name: {name}</Text>
       <Text style={{fontSize: 14, color: 'grey'}}>ID: {id}</Text>
-      <View style={{height: 8}} />
-      <Text style={{fontSize: 13, fontWeight: 'bold'}}>
-        Heart Rate: {heartRate != null ? `${heartRate} bpm` : 'Not streaming'}
-      </Text>
+      <View style={styles.dataContainer}>
+        <Text>
+          Device State:{' '}
+          {deviceState ? JSON.stringify(deviceState, null, 2) : 'N/A'}
+        </Text>
+      </View>
+      <View style={{marginVertical: 12}}>
+        <Button
+          title="Reboot Strap"
+          color="green"
+          onPress={async () => {
+            try {
+              await connectedDevice.rebootStrap();
+              console.log(`Rebooted strap for ${id}`);
+            } catch (e) {
+              console.error(`Error rebooting strap for ${id}:`, e);
+            }
+          }}
+        />
+        <Button
+          title="Disconnect"
+          color="red"
+          onPress={async () => {
+            await connectedDevice.disconnect();
+            console.log(`Disconnected ${id}`);
+          }}
+        />
+      </View>
       {/* <SendCommandsComponent connectedDevice={connectedDevice} /> */}
       <Button
         title={
@@ -141,18 +269,28 @@ const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
         }
         onPress={() => connectedDevice.toggleRealTimeHR()}
       />
+      <View style={styles.dataContainer}>
+        <Text style={{fontSize: 13, fontWeight: 'bold'}}>
+          Heart Rate: {heartRate != null ? `${heartRate} bpm` : 'Not streaming'}
+        </Text>
+      </View>
       <Button
-        title="Disconnect"
-        color="red"
-        onPress={async () => {
-          await connectedDevice.disconnect();
-          console.log(`Disconnected ${id}`);
+        title={'Get historical data packets'}
+        onPress={() => {
+          connectedDevice
+            .getHistoricalDataPackets()
+            .then(packets => {
+              console.log(`Historical data packets for ${id}:`, packets);
+            })
+            .catch(err => {
+              console.error(
+                `Error getting historical data packets for ${id}:`,
+                err,
+              );
+            });
         }}
       />
-      <Text>
-        Device State:{' '}
-        {deviceState ? JSON.stringify(deviceState, null, 2) : 'N/A'}
-      </Text>
+      <MostRecentHistoricalDataPacket connectedDevice={connectedDevice} />
     </View>
   );
 };
@@ -229,5 +367,10 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderRadius: 8,
+  },
+  dataContainer: {
+    padding: 12,
+    marginTop: 12,
+    backgroundColor: '#f0f0f0',
   },
 });

@@ -339,6 +339,14 @@ export class WhoopPacket {
   }
 
   /**
+   * Utility to check if the raw data is a console logs packet.
+   */
+  static isConsoleLogs(raw: Uint8Array): boolean {
+    if (raw.length < 5 || raw[0] !== 0xaa) return false;
+    return raw[4] === PacketType.CONSOLE_LOGS;
+  }
+
+  /**
    * Returns a string representation of the WhoopPacket object.
    * @returns {string} A formatted string representing the packet.
    */

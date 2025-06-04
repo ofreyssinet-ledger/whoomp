@@ -215,7 +215,7 @@ export class ReactNativeBleTransport implements Transport {
       BLEDeviceData.WHOOP_CHAR_CMD_FROM_STRAP,
       (error, char) => {
         if (error) {
-          console.error('Error monitoring CMD_FROM:', error);
+          if (isConnected) console.error('Error monitoring CMD_FROM:', error);
           return;
         }
         if (char?.value) {
@@ -230,7 +230,7 @@ export class ReactNativeBleTransport implements Transport {
       BLEDeviceData.WHOOP_CHAR_EVENTS_FROM_STRAP,
       (error, char) => {
         if (error) {
-          console.error('Error monitoring EVENTS:', error);
+          if (isConnected) console.error('Error monitoring EVENTS:', error);
           return;
         }
         if (char?.value) {
@@ -245,7 +245,7 @@ export class ReactNativeBleTransport implements Transport {
       BLEDeviceData.WHOOP_CHAR_DATA_FROM_STRAP,
       (error, char) => {
         if (error) {
-          console.error('Error monitoring DATA:', error);
+          if (isConnected) console.error('Error monitoring DATA:', error);
           return;
         }
         if (char?.value) {
@@ -296,6 +296,7 @@ export class ReactNativeBleTransport implements Transport {
         dataSubscription.remove();
         disconnectSub.remove();
         try {
+          isConnected = false;
           await this.manager.cancelDeviceConnection(id);
           onDisconnect();
         } catch (err) {

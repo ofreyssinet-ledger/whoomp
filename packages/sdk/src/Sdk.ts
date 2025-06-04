@@ -1,7 +1,7 @@
 import { BehaviorSubject, map, Observable } from 'rxjs';
-import { DiscoveredDevice, type Transport } from './Transport';
 import { Command } from './Command';
 import { ConnectedDevice, DeviceSession } from './DeviceSession';
+import { DiscoveredDevice, type Transport } from './Transport';
 
 export class Sdk {
   transport: Transport;

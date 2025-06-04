@@ -1,5 +1,3 @@
-// new WhoopPacket(PacketType.COMMAND, 0, CommandNumber.TOGGLE_REALTIME_HR, new Uint8Array([isRealtimeActive ? 0x01 : 0x00])).framedPacket();
-
 import { Command } from '../Command';
 import { PacketType, CommandNumber, WhoopPacket } from '../WhoopPacket';
 

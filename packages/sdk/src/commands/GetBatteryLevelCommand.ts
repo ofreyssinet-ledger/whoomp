@@ -1,4 +1,3 @@
-// src/commands/GetBatteryLevelCommand.ts
 import { Command } from '../Command';
 import { PacketType, CommandNumber, WhoopPacket } from '../WhoopPacket';
 

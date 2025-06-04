@@ -1,21 +1,30 @@
 import {
   BehaviorSubject,
+  filter,
   first,
   firstValueFrom,
   map,
-  Subscription,
   Observable,
+  Subscription,
 } from 'rxjs';
 import { Command } from './Command';
-import { TransportConnectedDevice } from './Transport';
-import { PacketType, WhoopPacket } from './WhoopPacket';
-import { ToggleRealtimeHRCommand } from './commands/ToggleRealtimeHRCommand';
 import { DeviceState, initialDeviceState } from './DeviceState';
-import { GetBatteryLevelCommand } from './commands/GetBatteryLevelCommand';
-import { GetHelloHarvardCommand } from './commands/GetHelloHarvardCommand';
-import { GetClockCommand } from './commands/GetClockCommand';
-import { ReportVersionInfoCommand } from './commands/ReportVersionInfoCommand';
 import { TaskQueue } from './TasksQueue';
+import { TransportConnectedDevice } from './Transport';
+import { MetadataType, PacketType, WhoopPacket } from './WhoopPacket';
+import { GetBatteryLevelCommand } from './commands/GetBatteryLevelCommand';
+import { GetClockCommand } from './commands/GetClockCommand';
+import { GetHelloHarvardCommand } from './commands/GetHelloHarvardCommand';
+import { RebootStrapCommand } from './commands/RebootStrapCommand';
+import { ReportVersionInfoCommand } from './commands/ReportVersionInfoCommand';
+import { SendHistoricalDataCommand } from './commands/SendHistoricalDataCommand';
+import { SendHistoricalDataNextBatchCommand } from './commands/SendHistoricalDataNextBatchCommand';
+import { ToggleRealtimeHRCommand } from './commands/ToggleRealtimeHRCommand';
+import {
+  ParsedHistoricalDataPacket,
+  parseHistoricalDataPacket,
+} from './parsing/parseHistoricalDataPacket';
+import { parseLogData } from './parsing/parseLogData';
 
 type HeartRateEvent = {
   date: Date;
@@ -27,6 +36,16 @@ type LogEvent = {
   message: string;
 };
 
+type GetHistoricalDataPacketsResult = {
+  packets: Array<WhoopPacket>;
+  parsedData: Array<ParsedHistoricalDataPacket>;
+};
+
+export type DeviceSessionState = {
+  downloadingHistoricalData: boolean;
+  logsFromStrapEnabled: boolean;
+};
+
 export type ConnectedDevice = {
   id: string;
   name: string;
@@ -34,8 +53,14 @@ export type ConnectedDevice = {
   deviceStateObservable: Observable<DeviceState>;
   heartRateFromStrapObservable: Observable<Array<HeartRateEvent>>;
   logsFromStrapObservable: Observable<Array<LogEvent>>;
+  isLogsFromStrapEnabled: () => boolean;
+  setLogsFromStrapEnabled: (enabled: boolean) => void;
   toggleRealTimeHR: () => Promise<boolean>;
+  getHistoricalDataPackets: () => Promise<GetHistoricalDataPacketsResult>;
+  mostRecentHistoricalDataPacket: Observable<ParsedHistoricalDataPacket | null>;
+  deviceSessionState: Observable<DeviceSessionState>;
   sendCommand: <T>(command: Command<T>) => Promise<T>;
+  rebootStrap: () => Promise<void>;
   disconnect: () => Promise<void>;
 };
 
@@ -64,6 +89,12 @@ export class DeviceSession {
   private deviceStateSubject: BehaviorSubject<DeviceState> =
     new BehaviorSubject(initialDeviceState);
 
+  private deviceSessionState: BehaviorSubject<DeviceSessionState> =
+    new BehaviorSubject<DeviceSessionState>({
+      downloadingHistoricalData: false,
+      logsFromStrapEnabled: false,
+    });
+
   constructor(private readonly connectedDevice: TransportConnectedDevice) {
     this.eventPacketsFromStrap =
       connectedDevice.eventsFromStrapCharacteristicObservable.pipe(
@@ -71,6 +102,10 @@ export class DeviceSession {
       );
     this.dataPacketsFromStrap =
       connectedDevice.dataFromStrapCharacteristicObservable.pipe(
+        filter(
+          (data) =>
+            this.isLogsFromStrapEnabled() || !WhoopPacket.isConsoleLogs(data), // Optim because there are LOTS of console logs when getting historical data
+        ),
         map((data) => WhoopPacket.fromData(data)),
       );
     this.commandPacketsFromStrap =
@@ -96,8 +131,11 @@ export class DeviceSession {
             ...this.heartRateFromStrap.getValue(),
             heartRateEvent,
           ]);
-        } else if (packet.type === PacketType.CONSOLE_LOGS) {
-          const logMessage = this.parseLogData(packet.data);
+        } else if (
+          packet.type === PacketType.CONSOLE_LOGS &&
+          this.isLogsFromStrapEnabled()
+        ) {
+          const logMessage = parseLogData(packet.data);
           const logEvent: LogEvent = {
             date: new Date(),
             message: logMessage,
@@ -144,6 +182,7 @@ export class DeviceSession {
     });
     const poll = async () => {
       try {
+        await this.taskQueue.addTask(() => Promise.resolve());
         console.log(
           '[DeviceSession][monitorDeviceState] Polling: monitoring device state for',
           this.connectedDevice.id,
@@ -172,37 +211,6 @@ export class DeviceSession {
       }
     };
     poll();
-  }
-
-  parseLogData(data: Uint8Array): string {
-    // Slice from index 7 to the second last element
-    const slicedData = data.slice(7, data.length - 1);
-
-    // Remove the invalid byte sequence `[0x34, 0x00, 0x01]` safely
-    const cleanedData = [];
-    for (let i = 0; i < slicedData.length; i++) {
-      // Ensure we don't go out of bounds
-      if (
-        slicedData[i] === 0x34 &&
-        slicedData[i + 1] === 0x00 &&
-        slicedData[i + 2] === 0x01 &&
-        i + 2 < slicedData.length
-      ) {
-        i += 2; // Skip the next two bytes safely
-        // console.log('removed bad');
-      } else {
-        cleanedData.push(slicedData[i]);
-      }
-    }
-
-    // Convert the cleaned data back into a Uint8Array
-    const cleanedUint8Array = new Uint8Array(cleanedData);
-
-    // Decode the cleaned data to a string
-    const decoder = new TextDecoder('utf-8');
-    const decodedString = decoder.decode(cleanedUint8Array);
-
-    return decodedString;
   }
 
   /**
@@ -273,6 +281,132 @@ export class DeviceSession {
     return this.realtimeHREnabled;
   }
 
+  private mostRecentHistoricalDataPacket =
+    new BehaviorSubject<ParsedHistoricalDataPacket | null>(null);
+
+  private async getHistoricalDataPacketsInternal(): Promise<GetHistoricalDataPacketsResult> {
+    let packets: Array<WhoopPacket> = [];
+    let parsedData: Array<ParsedHistoricalDataPacket> = [];
+
+    this.mostRecentHistoricalDataPacket.next(null);
+    this.deviceSessionState.next({
+      ...this.deviceSessionState.getValue(),
+      downloadingHistoricalData: true,
+    });
+
+    const historicalPacketsSub = this.dataPacketsFromStrap
+      .pipe(filter((packet) => packet.type === PacketType.HISTORICAL_DATA))
+      .subscribe((packet) => {
+        console.log(
+          '[DeviceSession][getHistoricalDataPackets] Historical data packet received',
+          packet,
+        );
+        try {
+          const parsedPacket = parseHistoricalDataPacket(packet);
+          const { datePrecise, heartRate, unknown, rr } = parsedPacket;
+          this.mostRecentHistoricalDataPacket.next(parsedPacket);
+          parsedData.push(parsedPacket);
+          console.log(
+            `[DeviceSession][getHistoricalDataPackets] Parsed data packet: DatePrecise=${datePrecise.toISOString()}, heartRate=${heartRate}, unknown=${unknown}, rr=${JSON.stringify(rr)}`,
+          );
+        } catch (error) {
+          console.error(error);
+        }
+        packets.push(packet);
+      });
+    try {
+      const metaPackets = this.dataPacketsFromStrap.pipe(
+        filter((packet) => packet.type === PacketType.METADATA),
+      );
+
+      await this.sendCommandInternal(new SendHistoricalDataCommand());
+
+      while (true) {
+        const metadataPacket = await firstValueFrom(
+          metaPackets.pipe(
+            first(
+              (packet) =>
+                (packet.cmd as number) === MetadataType.HISTORY_END ||
+                (packet.cmd as number) === MetadataType.HISTORY_COMPLETE,
+            ),
+          ),
+        );
+
+        if ((metadataPacket.cmd as number) === MetadataType.HISTORY_COMPLETE) {
+          console.log(
+            '[DeviceSession][getHistoricalDataPackets] History complete packet received',
+            metadataPacket,
+          );
+          break;
+        } else {
+          console.log(
+            '[DeviceSession][getHistoricalDataPackets] History end packet received, but not complete',
+            metadataPacket,
+          );
+        }
+
+        // Get the trim and construct new packet
+        const dataView = new DataView(metadataPacket.data.buffer);
+        const trim = dataView.getUint32(10, true); // Little-endian
+
+        // Construct new packet data
+        const responsePacket = new Uint8Array(9); // 1 (Byte) + 4 + 4 = 9 bytes
+        const responseView = new DataView(responsePacket.buffer);
+        responseView.setUint8(0, 1); // Byte set to 1
+        responseView.setUint32(1, trim, true); // Trim Value (4 bytes)
+        responseView.setUint32(5, 0, true); // Zero Padding (4 bytes)
+
+        await this.sendCommandInternal(
+          new SendHistoricalDataNextBatchCommand(responsePacket),
+        );
+      }
+
+      return { packets, parsedData };
+    } finally {
+      this.deviceSessionState.next({
+        ...this.deviceSessionState.getValue(),
+        downloadingHistoricalData: false,
+      });
+      console.log(
+        '[DeviceSession][getHistoricalDataPackets] Unsubscribing from historical packets',
+      );
+      historicalPacketsSub.unsubscribe();
+    }
+  }
+
+  private async getHistoricalDataPackets() {
+    console.log(
+      '[DeviceSession][getHistoricalDataPackets] getHistoricalDataPackets called for device',
+      this.connectedDevice.id,
+    );
+    return this.taskQueue.addTask(() =>
+      this.getHistoricalDataPacketsInternal(),
+    );
+  }
+
+  private isLogsFromStrapEnabled(): boolean {
+    return this.deviceSessionState.getValue().logsFromStrapEnabled;
+  }
+
+  private setLogsFromStrapEnabled(enabled: boolean): void {
+    this.deviceSessionState.next({
+      ...this.deviceSessionState.getValue(),
+      logsFromStrapEnabled: enabled,
+    });
+  }
+
+  private async rebootStrap(): Promise<void> {
+    console.log(
+      '[DeviceSession][rebootStrap] rebootStrap called for device',
+      this.connectedDevice.id,
+    );
+    /**
+     * Here we use the internal sendCommand method to ensure we can reboot
+     * even if the task queue is busy/blocked.
+     */
+    return this.sendCommandInternal(new RebootStrapCommand());
+  }
+
   getConnectedDevice(): ConnectedDevice {
     return {
       id: this.connectedDevice.id,
@@ -280,7 +414,15 @@ export class DeviceSession {
       isConnected: this.connectedDevice.isConnected,
       deviceStateObservable: this.deviceStateSubject.asObservable(),
       logsFromStrapObservable: this.logsFromStrap.asObservable(),
+      isLogsFromStrapEnabled: () => this.isLogsFromStrapEnabled(),
+      setLogsFromStrapEnabled: (enabled: boolean) =>
+        this.setLogsFromStrapEnabled(enabled),
       heartRateFromStrapObservable: this.heartRateFromStrap.asObservable(),
+      getHistoricalDataPackets: () => this.getHistoricalDataPackets(),
+      mostRecentHistoricalDataPacket:
+        this.mostRecentHistoricalDataPacket.asObservable(),
+      deviceSessionState: this.deviceSessionState.asObservable(),
+      rebootStrap: () => this.rebootStrap(),
       toggleRealTimeHR: () => this.toggleRealTimeHR(),
       sendCommand: <T>(command: Command<T>) => this.sendCommand(command),
       disconnect: () => this.disconnect(),
