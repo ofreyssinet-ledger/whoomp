@@ -16,12 +16,6 @@ export type TransportConnectedDevice = {
   isConnected: () => boolean;
 };
 
-export type ConnectedDevice = {
-  id: string;
-  name: string;
-  isConnected: () => boolean;
-};
-
 export interface Transport {
   helloWorld(): string;
   getDevices(): Observable<DiscoveredDevice[]>;
