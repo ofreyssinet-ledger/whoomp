@@ -179,6 +179,11 @@ const useMostRecentHistoricalData = (
   return mostRecent;
 };
 
+const KeepAwake = () => {
+  // TODO: Implement a keep-awake mechanism (aka wakelock)
+  return null;
+};
+
 const MostRecentHistoricalDataPacket: React.FC<{
   connectedDevice: SDKConnectedDevice;
 }> = ({connectedDevice}) => {
@@ -188,7 +193,7 @@ const MostRecentHistoricalDataPacket: React.FC<{
   if (!mostRecent) {
     return (
       <View style={styles.dataContainer}>
-        <Text>No historical data available</Text>;
+        <Text>No historical data available</Text>
       </View>
     );
   }
@@ -227,9 +232,11 @@ const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
   const {id, name} = connectedDevice;
   const deviceState = useDeviceState(connectedDevice);
   const heartRate = useHeartRate(connectedDevice);
+  const deviceSessionState = useDeviceSessionState(connectedDevice);
 
   return (
     <View style={styles.deviceContainer}>
+      {deviceSessionState?.downloadingHistoricalData ? <KeepAwake /> : null}
       <Text style={{fontSize: 14, fontWeight: 'bold'}}>Name: {name}</Text>
       <Text style={{fontSize: 14, color: 'grey'}}>ID: {id}</Text>
       <View style={styles.dataContainer}>
