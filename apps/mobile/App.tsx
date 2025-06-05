@@ -1,12 +1,10 @@
 // App.tsx
 import {
-  ConnectedDevice,
   DeviceSessionState,
   DeviceState,
   GetBatteryLevelCommand,
   GetClockCommand,
   GetHelloHarvardCommand,
-  ParsedHistoricalDataPacket,
   ReportVersionInfoCommand,
   Sdk,
   type ConnectedDevice as SDKConnectedDevice,

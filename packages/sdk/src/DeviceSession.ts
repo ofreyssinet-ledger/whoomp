@@ -349,15 +349,8 @@ export class DeviceSession {
         const dataView = new DataView(metadataPacket.data.buffer);
         const trim = dataView.getUint32(10, true); // Little-endian
 
-        // Construct new packet data
-        const responsePacket = new Uint8Array(9); // 1 (Byte) + 4 + 4 = 9 bytes
-        const responseView = new DataView(responsePacket.buffer);
-        responseView.setUint8(0, 1); // Byte set to 1
-        responseView.setUint32(1, trim, true); // Trim Value (4 bytes)
-        responseView.setUint32(5, 0, true); // Zero Padding (4 bytes)
-
         await this.sendCommandInternal(
-          new SendHistoricalDataNextBatchCommand(responsePacket),
+          new SendHistoricalDataNextBatchCommand(trim),
         );
       }
 
