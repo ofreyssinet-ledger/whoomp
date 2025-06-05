@@ -9,7 +9,7 @@ import {
 } from 'rxjs';
 import { Command } from './Command';
 import { DeviceState, initialDeviceState } from './DeviceState';
-import { TaskQueue } from './TasksQueue';
+import { TaskQueue } from '../utils/TasksQueue';
 import { TransportConnectedDevice } from './Transport';
 import { MetadataType, PacketType, WhoopPacket } from './WhoopPacket';
 import { GetBatteryLevelCommand } from './commands/GetBatteryLevelCommand';

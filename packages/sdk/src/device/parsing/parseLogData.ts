@@ -1,4 +1,4 @@
-import { decodeUTF8 } from '../utils/decodeUTF8';
+import { decodeUTF8 } from '../../utils/decodeUTF8';
 
 export function parseLogData(data: Uint8Array): string {
   // Slice from index 7 to the second last element

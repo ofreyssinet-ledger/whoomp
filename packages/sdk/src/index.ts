@@ -1,14 +1,17 @@
-export { BLEDeviceData } from './BLEDeviceData';
-export { GetBatteryLevelCommand } from './commands/GetBatteryLevelCommand';
-export { GetClockCommand } from './commands/GetClockCommand';
-export { GetHelloHarvardCommand } from './commands/GetHelloHarvardCommand';
-export { ReportVersionInfoCommand } from './commands/ReportVersionInfoCommand';
-export { type ConnectedDevice, type DeviceSessionState } from './DeviceSession';
-export { type DeviceState } from './DeviceState';
-export { type ParsedHistoricalDataPacket } from './parsing/parseHistoricalDataPacket';
-export { Sdk } from './Sdk';
+export { BLEDeviceData } from './device/BLEDeviceData';
+export { GetBatteryLevelCommand } from './device/commands/GetBatteryLevelCommand';
+export { GetClockCommand } from './device/commands/GetClockCommand';
+export { GetHelloHarvardCommand } from './device/commands/GetHelloHarvardCommand';
+export { ReportVersionInfoCommand } from './device/commands/ReportVersionInfoCommand';
+export {
+  type ConnectedDevice,
+  type DeviceSessionState,
+} from './device/DeviceSession';
+export { type DeviceState } from './device/DeviceState';
+export { type ParsedHistoricalDataPacket } from './device/parsing/parseHistoricalDataPacket';
 export {
   type DiscoveredDevice,
   type Transport,
   type TransportConnectedDevice,
-} from './Transport';
+} from './device/Transport';
+export { Sdk } from './Sdk';
