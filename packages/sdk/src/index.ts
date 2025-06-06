@@ -8,7 +8,7 @@ export {
   type DeviceSessionState,
 } from './device/DeviceSession';
 export { type DeviceState } from './device/DeviceState';
-export { type ParsedHistoricalDataPacket } from './device/parsing/parseHistoricalDataPacket';
+export { type HistoricalDataPacket } from './data/model';
 export {
   type DiscoveredDevice,
   type Transport,

@@ -9,7 +9,8 @@ import {
   Sdk,
   type ConnectedDevice as SDKConnectedDevice,
 } from '@whoomp/sdk';
-import React, {use, useEffect, useMemo, useState} from 'react';
+
+import React, {useEffect, useMemo, useState} from 'react';
 import {
   Alert,
   Button,
@@ -117,7 +118,7 @@ const useMostRecentHistoricalData = (
    * Use at least 1000ms to avoid overwhelming the UI.
    */
   throttleTimeMs: number = 1000,
-): {date: Date; heartRate: number} | null => {
+) => {
   return useStateFromObservable(
     connectedDevice.mostRecentHistoricalDataPacket.pipe(
       throttleTime(throttleTimeMs),
@@ -150,7 +151,7 @@ const MostRecentHistoricalDataPacket: React.FC<{
         Most Recent Historical Data
       </Text>
       <Text style={{fontSize: 14, color: 'grey'}}>
-        Date: {mostRecent.date.toISOString()}
+        Date: {new Date(mostRecent.timestampMs).toISOString()}
       </Text>
       <Text style={{fontSize: 13, fontWeight: 'bold'}}>
         Heart Rate: {mostRecent.heartRate} bpm
@@ -248,7 +249,7 @@ const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
   );
 };
 
-export default function App() {
+export function App() {
   const [sdk] = useState(() => {
     const transport = new ReactNativeBleTransport();
     return new Sdk(transport);
@@ -300,6 +301,10 @@ export default function App() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+export default function AppWrapper() {
+  return <App />;
 }
 
 const styles = StyleSheet.create({

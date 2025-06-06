@@ -20,11 +20,9 @@ import { ReportVersionInfoCommand } from './commands/ReportVersionInfoCommand';
 import { SendHistoricalDataCommand } from './commands/SendHistoricalDataCommand';
 import { SendHistoricalDataNextBatchCommand } from './commands/SendHistoricalDataNextBatchCommand';
 import { ToggleRealtimeHRCommand } from './commands/ToggleRealtimeHRCommand';
-import {
-  ParsedHistoricalDataPacket,
-  parseHistoricalDataPacket,
-} from './parsing/parseHistoricalDataPacket';
+import { parseHistoricalDataPacket } from './parsing/parseHistoricalDataPacket';
 import { parseLogData } from './parsing/parseLogData';
+import { HistoricalDataPacket } from '../data/model';
 
 type HeartRateEvent = {
   date: Date;
@@ -38,7 +36,7 @@ type LogEvent = {
 
 type GetHistoricalDataPacketsResult = {
   packets: Array<WhoopPacket>;
-  parsedData: Array<ParsedHistoricalDataPacket>;
+  parsedData: Array<HistoricalDataPacket>;
 };
 
 export type DeviceSessionState = {
@@ -57,7 +55,7 @@ export type ConnectedDevice = {
   setLogsFromStrapEnabled: (enabled: boolean) => void;
   toggleRealTimeHR: () => Promise<boolean>;
   getHistoricalDataPackets: () => Promise<GetHistoricalDataPacketsResult>;
-  mostRecentHistoricalDataPacket: Observable<ParsedHistoricalDataPacket | null>;
+  mostRecentHistoricalDataPacket: Observable<HistoricalDataPacket | null>;
   deviceSessionState: Observable<DeviceSessionState>;
   sendCommand: <T>(command: Command<T>) => Promise<T>;
   rebootStrap: () => Promise<void>;
@@ -282,11 +280,11 @@ export class DeviceSession {
   }
 
   private mostRecentHistoricalDataPacket =
-    new BehaviorSubject<ParsedHistoricalDataPacket | null>(null);
+    new BehaviorSubject<HistoricalDataPacket | null>(null);
 
   private async getHistoricalDataPacketsInternal(): Promise<GetHistoricalDataPacketsResult> {
     let packets: Array<WhoopPacket> = [];
-    let parsedData: Array<ParsedHistoricalDataPacket> = [];
+    let parsedData: Array<HistoricalDataPacket> = [];
 
     this.mostRecentHistoricalDataPacket.next(null);
     this.deviceSessionState.next({
@@ -303,11 +301,11 @@ export class DeviceSession {
         );
         try {
           const parsedPacket = parseHistoricalDataPacket(packet);
-          const { datePrecise, heartRate, unknown, rr } = parsedPacket;
+          const { timestampMs, heartRate, unknown, rr } = parsedPacket;
           this.mostRecentHistoricalDataPacket.next(parsedPacket);
           parsedData.push(parsedPacket);
           console.log(
-            `[DeviceSession][getHistoricalDataPackets] Parsed data packet: DatePrecise=${datePrecise.toISOString()}, heartRate=${heartRate}, unknown=${unknown}, rr=${JSON.stringify(rr)}`,
+            `[DeviceSession][getHistoricalDataPackets] Parsed data packet: date=${new Date(timestampMs).toISOString()}, heartRate=${heartRate}, unknown=${unknown}, rr=${JSON.stringify(rr)}`,
           );
         } catch (error) {
           console.error(error);

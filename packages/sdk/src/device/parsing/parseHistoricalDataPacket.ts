@@ -1,27 +1,16 @@
+import { HistoricalDataPacket } from '../../data/model';
 import { WhoopPacket } from '../WhoopPacket';
-
-export type ParsedHistoricalDataPacket = {
-  date: Date;
-  datePrecise: Date;
-  unix: number; // seconds since epoch
-  subseconds: number; // 0..32768 fraction of a second
-  unknown: number; // Unknown field, needs further investigation
-  heartRate: number; // Heart rate in bpm
-  rr: number[]; // Array of RR intervals in milliseconds
-};
 
 export function parseHistoricalDataPacket(
   packet: WhoopPacket,
-): ParsedHistoricalDataPacket {
+): HistoricalDataPacket {
   const view = new DataView(packet.data.buffer, packet.data.byteOffset);
 
   const unix = view.getUint32(4, true); // seconds since epoch
   const subsec = view.getUint16(8, true); // 0..32768 fraction of a second
-  // Convert UNIX timestamp (seconds) to a JS Date:
-  const date = new Date(unix * 1000);
   const subsecMs = (subsec / 32768) * 1000;
 
-  const datePrecise = new Date(unix * 1000 + subsecMs);
+  const timestampMs = unix * 1000 + subsecMs;
   const unk = view.getUint32(10, true);
   const heart = view.getUint8(14);
 
@@ -57,12 +46,10 @@ export function parseHistoricalDataPacket(
   }
 
   return {
-    date,
-    datePrecise,
-    unix,
-    subseconds: subsec,
+    timestampMs,
     unknown: unk,
     heartRate: heart,
     rr,
+    originalData: packet.data,
   };
 }
