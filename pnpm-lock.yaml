@@ -57,6 +57,9 @@ importers:
       react-native-ble-plx:
         specifier: 'catalog:'
         version: 3.4.0(react-native@0.79.2(@babel/core@7.27.1)(@react-native-community/cli@18.0.0(typescript@5.0.4))(@types/react@19.1.5)(react@19.0.0))(react@19.0.0)
+      react-native-mmkv:
+        specifier: ^3.2.0
+        version: 3.2.0(react-native@0.79.2(@babel/core@7.27.1)(@react-native-community/cli@18.0.0(typescript@5.0.4))(@types/react@19.1.5)(react@19.0.0))(react@19.0.0)
       rxjs:
         specifier: 'catalog:'
         version: 7.8.2
@@ -3608,6 +3611,12 @@ packages:
       react: '*'
       react-native: '*'
 
+  react-native-mmkv@3.2.0:
+    resolution: {integrity: sha512-9y7K//1MaU46TFrXkyU0wT5VGk9Y2FDLFV6NPl+z3jTbm2G7SC1UIxneF6CfhSmBX5CfKze9SO7kwDuRx7flpQ==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+
   react-native@0.79.2:
     resolution: {integrity: sha512-AnGzb56JvU5YCL7cAwg10+ewDquzvmgrMddiBM0GAWLwQM/6DJfGd2ZKrMuKKehHerpDDZgG+EY64gk3x3dEkw==}
     engines: {node: '>=18'}
@@ -5882,9 +5891,7 @@ snapshots:
       metro-runtime: 0.82.4
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.79.2': {}
 
@@ -8699,6 +8706,11 @@ snapshots:
     dependencies:
       react: 19.1.0
       react-native: 0.79.2(@babel/core@7.27.1)(@react-native-community/cli@18.0.0(typescript@5.8.3))(@types/react@19.1.5)(react@19.1.0)
+
+  react-native-mmkv@3.2.0(react-native@0.79.2(@babel/core@7.27.1)(@react-native-community/cli@18.0.0(typescript@5.0.4))(@types/react@19.1.5)(react@19.0.0))(react@19.0.0):
+    dependencies:
+      react: 19.0.0
+      react-native: 0.79.2(@babel/core@7.27.1)(@react-native-community/cli@18.0.0(typescript@5.0.4))(@types/react@19.1.5)(react@19.0.0)
 
   react-native@0.79.2(@babel/core@7.27.1)(@react-native-community/cli@18.0.0(typescript@5.0.4))(@types/react@19.1.5)(react@19.0.0):
     dependencies:

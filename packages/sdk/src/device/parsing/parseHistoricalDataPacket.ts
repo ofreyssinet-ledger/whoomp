@@ -8,7 +8,7 @@ export function parseHistoricalDataPacket(
 
   const unix = view.getUint32(4, true); // seconds since epoch
   const subsec = view.getUint16(8, true); // 0..32768 fraction of a second
-  const subsecMs = (subsec / 32768) * 1000;
+  const subsecMs = Math.floor((subsec / 32768) * 1000);
 
   const timestampMs = unix * 1000 + subsecMs;
   const unk = view.getUint32(10, true);

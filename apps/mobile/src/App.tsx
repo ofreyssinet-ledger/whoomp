@@ -2,6 +2,7 @@
 import {
   DeviceSessionState,
   DeviceState,
+  filterDataDumpStorageKeys,
   GetBatteryLevelCommand,
   GetClockCommand,
   GetHelloHarvardCommand,
@@ -22,6 +23,7 @@ import {
 } from 'react-native';
 import {firstValueFrom, Observable, throttleTime} from 'rxjs';
 import {ReactNativeBleTransport} from './RNBleTransport';
+import {mmkvStorage, storage} from './data/MMKVStorage';
 
 type ConnectedDeviceProps = {
   connectedDevice: SDKConnectedDevice;
@@ -173,8 +175,9 @@ const MostRecentHistoricalDataPacket: React.FC<{
   );
 };
 
-const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
+const ConnectedDeviceItem: React.FC<ConnectedDeviceProps & {sdk: Sdk}> = ({
   connectedDevice,
+  sdk,
 }) => {
   const {id, name} = connectedDevice;
   const deviceState = useDeviceState(connectedDevice);
@@ -229,10 +232,11 @@ const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
         </Text>
       </View>
       <Button
-        title={'Get historical data packets'}
+        title={'Download historical data packets'}
+        disabled={deviceSessionState?.downloadingHistoricalData}
         onPress={() => {
-          connectedDevice
-            .getHistoricalDataPackets()
+          sdk
+            .downloadHistoricalData(id, 3600 * 3) // approx 3 hours of data
             .then(packets => {
               console.log(`Historical data packets for ${id}:`, packets);
             })
@@ -244,6 +248,13 @@ const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
             });
         }}
       />
+      <Button
+        title="Abort download"
+        disabled={!deviceSessionState?.downloadingHistoricalData}
+        onPress={() => {
+          connectedDevice.abortDownload();
+        }}
+      />
       <MostRecentHistoricalDataPacket connectedDevice={connectedDevice} />
     </View>
   );
@@ -252,8 +263,31 @@ const ConnectedDeviceItem: React.FC<ConnectedDeviceProps> = ({
 export function App() {
   const [sdk] = useState(() => {
     const transport = new ReactNativeBleTransport();
-    return new Sdk(transport);
+    return new Sdk(transport, mmkvStorage);
   });
+
+  useEffect(() => {
+    console.log(
+      '[App] Initializing SDK with storage data:',
+      Object.fromEntries(
+        storage.getAllKeys().map(key => {
+          const data = storage.getString(key);
+          return [key, data];
+        }),
+      ),
+    );
+    console.log(
+      filterDataDumpStorageKeys(storage.getAllKeys())
+        .map(key => {
+          const data = storage.getString(key);
+          return data;
+        })
+        .join('\n'),
+    );
+    // storage.getAllKeys().forEach(key => {
+    //   storage.delete(key);
+    // });
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -292,7 +326,7 @@ export function App() {
           <>
             <Text style={styles.heading}>Connected Devices</Text>
             {Object.values(connectedDevices).map(d => (
-              <ConnectedDeviceItem key={d.id} connectedDevice={d} />
+              <ConnectedDeviceItem key={d.id} connectedDevice={d} sdk={sdk} />
             ))}
           </>
         ) : (

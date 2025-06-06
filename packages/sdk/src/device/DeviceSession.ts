@@ -34,11 +34,6 @@ type LogEvent = {
   message: string;
 };
 
-type GetHistoricalDataPacketsResult = {
-  packets: Array<WhoopPacket>;
-  parsedData: Array<HistoricalDataPacket>;
-};
-
 export type DeviceSessionState = {
   downloadingHistoricalData: boolean;
   logsFromStrapEnabled: boolean;
@@ -54,8 +49,8 @@ export type ConnectedDevice = {
   isLogsFromStrapEnabled: () => boolean;
   setLogsFromStrapEnabled: (enabled: boolean) => void;
   toggleRealTimeHR: () => Promise<boolean>;
-  getHistoricalDataPackets: () => Promise<GetHistoricalDataPacketsResult>;
   mostRecentHistoricalDataPacket: Observable<HistoricalDataPacket | null>;
+  abortDownload: () => void;
   deviceSessionState: Observable<DeviceSessionState>;
   sendCommand: <T>(command: Command<T>) => Promise<T>;
   rebootStrap: () => Promise<void>;
@@ -151,7 +146,7 @@ export class DeviceSession {
   }
 
   /**
-   * Releases the resources used by this DeviceSession.
+   * Releases the resources used by this DeviceSession, and disconnects the device.
    * This should be called when the session is no longer needed.
    */
   release() {
@@ -159,6 +154,7 @@ export class DeviceSession {
       '[DeviceSession][release] Releasing DeviceSession for device',
       this.connectedDevice.id,
     );
+    this.connectedDevice.disconnect();
     this.dataStreamSubscription.unsubscribe();
     if (this.monitoringTimeout) {
       clearTimeout(this.monitoringTimeout);
@@ -279,100 +275,142 @@ export class DeviceSession {
     return this.realtimeHREnabled;
   }
 
-  private mostRecentHistoricalDataPacket =
-    new BehaviorSubject<HistoricalDataPacket | null>(null);
+  private downloadAborted = false;
 
-  private async getHistoricalDataPacketsInternal(): Promise<GetHistoricalDataPacketsResult> {
-    let packets: Array<WhoopPacket> = [];
-    let parsedData: Array<HistoricalDataPacket> = [];
+  /**
+   * Requests historical data from the strap.
+   * This method will send the command to start downloading historical data
+   * and will continue to request batches until the history is complete.
+   */
+  private async requestHistoricalData(): Promise<void> {
+    console.log(
+      '[DeviceSession][requestHistoricalData] requestHistoricalData called for device',
+      this.connectedDevice.id,
+    );
+    const metaPackets = this.dataPacketsFromStrap.pipe(
+      filter((packet) => packet.type === PacketType.METADATA),
+    );
 
-    this.mostRecentHistoricalDataPacket.next(null);
-    this.deviceSessionState.next({
-      ...this.deviceSessionState.getValue(),
-      downloadingHistoricalData: true,
-    });
+    await this.sendCommandInternal(new SendHistoricalDataCommand());
 
-    const historicalPacketsSub = this.dataPacketsFromStrap
-      .pipe(filter((packet) => packet.type === PacketType.HISTORICAL_DATA))
-      .subscribe((packet) => {
-        console.log(
-          '[DeviceSession][getHistoricalDataPackets] Historical data packet received',
-          packet,
-        );
-        try {
-          const parsedPacket = parseHistoricalDataPacket(packet);
-          const { timestampMs, heartRate, unknown, rr } = parsedPacket;
-          this.mostRecentHistoricalDataPacket.next(parsedPacket);
-          parsedData.push(parsedPacket);
-          console.log(
-            `[DeviceSession][getHistoricalDataPackets] Parsed data packet: date=${new Date(timestampMs).toISOString()}, heartRate=${heartRate}, unknown=${unknown}, rr=${JSON.stringify(rr)}`,
-          );
-        } catch (error) {
-          console.error(error);
-        }
-        packets.push(packet);
-      });
-    try {
-      const metaPackets = this.dataPacketsFromStrap.pipe(
-        filter((packet) => packet.type === PacketType.METADATA),
+    while (true) {
+      const metadataPacket = await firstValueFrom(
+        metaPackets.pipe(
+          first(
+            (packet) =>
+              (packet.cmd as number) === MetadataType.HISTORY_END ||
+              (packet.cmd as number) === MetadataType.HISTORY_COMPLETE,
+          ),
+        ),
       );
 
-      await this.sendCommandInternal(new SendHistoricalDataCommand());
-
-      while (true) {
-        const metadataPacket = await firstValueFrom(
-          metaPackets.pipe(
-            first(
-              (packet) =>
-                (packet.cmd as number) === MetadataType.HISTORY_END ||
-                (packet.cmd as number) === MetadataType.HISTORY_COMPLETE,
-            ),
-          ),
+      if (this.downloadAborted) {
+        console.log(
+          '[DeviceSession][getHistoricalDataPackets] Download aborted by user',
         );
+        this.downloadAborted = false;
+        break;
+      }
 
-        if ((metadataPacket.cmd as number) === MetadataType.HISTORY_COMPLETE) {
-          console.log(
-            '[DeviceSession][getHistoricalDataPackets] History complete packet received',
-            metadataPacket,
-          );
-          break;
-        } else {
-          console.log(
-            '[DeviceSession][getHistoricalDataPackets] History end packet received, but not complete',
-            metadataPacket,
-          );
-        }
-
-        // Get the trim and construct new packet
-        const dataView = new DataView(metadataPacket.data.buffer);
-        const trim = dataView.getUint32(10, true); // Little-endian
-
-        await this.sendCommandInternal(
-          new SendHistoricalDataNextBatchCommand(trim),
+      if ((metadataPacket.cmd as number) === MetadataType.HISTORY_COMPLETE) {
+        console.log(
+          '[DeviceSession][getHistoricalDataPackets] History complete packet received',
+          metadataPacket,
+        );
+        break;
+      } else {
+        console.log(
+          '[DeviceSession][getHistoricalDataPackets] History end packet received, but not complete',
+          metadataPacket,
         );
       }
 
-      return { packets, parsedData };
-    } finally {
-      this.deviceSessionState.next({
-        ...this.deviceSessionState.getValue(),
-        downloadingHistoricalData: false,
-      });
-      console.log(
-        '[DeviceSession][getHistoricalDataPackets] Unsubscribing from historical packets',
+      // Get the trim and construct new packet
+      const dataView = new DataView(metadataPacket.data.buffer);
+      const trim = dataView.getUint32(10, true); // Little-endian
+
+      await this.sendCommandInternal(
+        new SendHistoricalDataNextBatchCommand(trim),
       );
-      historicalPacketsSub.unsubscribe();
     }
   }
 
-  private async getHistoricalDataPackets() {
+  private mostRecentHistoricalDataPacket =
+    new BehaviorSubject<HistoricalDataPacket | null>(null);
+
+  getHistoricalDataPacketsStream(): Observable<HistoricalDataPacket> {
+    if (this.deviceSessionState.getValue().downloadingHistoricalData) {
+      throw new Error(
+        '[DeviceSession][getHistoricalDataPackets] Already downloading historical data',
+      );
+    }
+    return new Observable<HistoricalDataPacket>((subscriber) => {
+      this.mostRecentHistoricalDataPacket.next(null);
+      this.deviceSessionState.next({
+        ...this.deviceSessionState.getValue(),
+        downloadingHistoricalData: true,
+      });
+
+      const historicalPacketsSub = this.dataPacketsFromStrap
+        .pipe(filter((packet) => packet.type === PacketType.HISTORICAL_DATA))
+        .subscribe((packet) => {
+          console.log(
+            '[DeviceSession][getHistoricalDataPackets] Historical data packet received',
+            packet,
+          );
+          try {
+            const parsedPacket = parseHistoricalDataPacket(packet);
+            const { timestampMs, heartRate, unknown, rr } = parsedPacket;
+            subscriber.next(parsedPacket);
+            this.mostRecentHistoricalDataPacket.next(parsedPacket);
+            console.log(
+              `[DeviceSession][getHistoricalDataPackets] Parsed data packet: timestamp=${timestampMs}, date=${new Date(timestampMs).toISOString()}, heartRate=${heartRate}, unknown=${unknown}, rr=${JSON.stringify(rr)}`,
+            );
+          } catch (error) {
+            console.error(error);
+          }
+        });
+      this.taskQueue
+        .addTask(() => this.requestHistoricalData())
+        .then(() => {
+          console.log(
+            '[DeviceSession][getHistoricalDataPackets] Historical data download completed',
+          );
+          subscriber.complete();
+        })
+        .catch((error) => {
+          console.error(
+            '[DeviceSession][getHistoricalDataPackets] Error downloading historical data:',
+            error,
+          );
+          subscriber.error(error);
+        })
+        .finally(() => {
+          this.deviceSessionState.next({
+            ...this.deviceSessionState.getValue(),
+            downloadingHistoricalData: false,
+          });
+          historicalPacketsSub.unsubscribe();
+        });
+      return () => {
+        console.log(
+          '[DeviceSession][getHistoricalDataPackets] Cleanup function called, unsubscribing from historical packets',
+        );
+        this.deviceSessionState.next({
+          ...this.deviceSessionState.getValue(),
+          downloadingHistoricalData: false,
+        });
+        historicalPacketsSub.unsubscribe();
+      };
+    });
+  }
+
+  private abortDownload(): void {
     console.log(
-      '[DeviceSession][getHistoricalDataPackets] getHistoricalDataPackets called for device',
+      '[DeviceSession][abortDownload] abortDownload called for device',
       this.connectedDevice.id,
     );
-    return this.taskQueue.addTask(() =>
-      this.getHistoricalDataPacketsInternal(),
-    );
+    this.downloadAborted = true;
   }
 
   private isLogsFromStrapEnabled(): boolean {
@@ -409,9 +447,9 @@ export class DeviceSession {
       setLogsFromStrapEnabled: (enabled: boolean) =>
         this.setLogsFromStrapEnabled(enabled),
       heartRateFromStrapObservable: this.heartRateFromStrap.asObservable(),
-      getHistoricalDataPackets: () => this.getHistoricalDataPackets(),
       mostRecentHistoricalDataPacket:
         this.mostRecentHistoricalDataPacket.asObservable(),
+      abortDownload: () => this.abortDownload(),
       deviceSessionState: this.deviceSessionState.asObservable(),
       rebootStrap: () => this.rebootStrap(),
       toggleRealTimeHR: () => this.toggleRealTimeHR(),

@@ -1,3 +1,15 @@
+export { HistoricalDataDump, type HistoricalDataPacket } from './data/model';
+export {
+  deserializeHistoricalDataDump,
+  historicalDataPacketTypeguard,
+  serializeHistoricalDataDump,
+} from './data/serialization';
+export { type Storage } from './data/Storage';
+export {
+  filterDataDumpStorageKeys,
+  generateDataDumpStorageKey,
+  parseDataDumpStorageKey,
+} from './data/storageUtils';
 export { BLEDeviceData } from './device/BLEDeviceData';
 export { GetBatteryLevelCommand } from './device/commands/GetBatteryLevelCommand';
 export { GetClockCommand } from './device/commands/GetClockCommand';
@@ -8,7 +20,6 @@ export {
   type DeviceSessionState,
 } from './device/DeviceSession';
 export { type DeviceState } from './device/DeviceState';
-export { type HistoricalDataPacket } from './data/model';
 export {
   type DiscoveredDevice,
   type Transport,

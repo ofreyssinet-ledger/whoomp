@@ -65,14 +65,18 @@ export function historicalDataPacketTypeguard(packet: unknown) {
   );
 }
 
+function serializeDataPackets(dataPackets: HistoricalDataPacket[]): string {
+  return dataPackets
+    .map((packet) => serializeHistoricalDataPacket(packet))
+    .join('\n');
+}
+
 export function serializeHistoricalDataDump(
   deviceName: string,
   date: Date,
   dataDump: HistoricalDataPacket[],
 ): string {
-  const serializedPackets = dataDump
-    .map(serializeHistoricalDataPacket)
-    .join('\n');
+  const serializedPackets = serializeDataPackets(dataDump);
   return `${deviceName}\n${date.toISOString()}\n${serializedPackets}`;
 }
 

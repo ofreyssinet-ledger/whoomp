@@ -8,4 +8,10 @@ export interface Storage {
     fromDate?: Date,
     toDate?: Date,
   ): Promise<Array<HistoricalDataDump>>;
+
+  deleteHistoricalDataDumps(
+    deviceName?: string,
+    fromDate?: Date,
+    toDate?: Date,
+  ): Promise<void>;
 }

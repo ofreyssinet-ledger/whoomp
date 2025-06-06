@@ -1,17 +1,22 @@
-import { BehaviorSubject, map, Observable } from 'rxjs';
+import { BehaviorSubject, bufferCount, map, Observable, tap } from 'rxjs';
 import { Command } from './device/Command';
 import { ConnectedDevice, DeviceSession } from './device/DeviceSession';
 import { DiscoveredDevice, type Transport } from './device/Transport';
+import { HistoricalDataDump } from './data/model';
+import { downloadHistoricalData } from './device/download/downloadHistoricalData';
+import { Storage } from './data/Storage';
 
 export class Sdk {
   transport: Transport;
+  storage: Storage;
 
   private deviceSessions: BehaviorSubject<Record<string, DeviceSession>> =
     new BehaviorSubject({});
 
-  constructor(transport: Transport) {
+  constructor(transport: Transport, storage: Storage) {
     console.log('SDK: Initialized with transport', transport);
     this.transport = transport;
+    this.storage = storage;
   }
 
   destroy() {
@@ -142,6 +147,37 @@ export class Sdk {
       throw new Error(`No device session found for deviceId ${deviceId}`);
     }
     return deviceSession.sendCommand(command);
+  }
+
+  /**
+   * Downloads historical data for a connected device. Saves the data in chunks
+   * to the storage using the provided buffer size.
+   * @param deviceId The ID of the device to download data from.
+   * @param bufferSize The size of the buffer for historical data packets (default is 36000).
+   * @returns A promise that resolves with the historical data dump.
+   */
+  async downloadHistoricalData(
+    deviceId: string,
+    bufferSize = 36000,
+  ): Promise<HistoricalDataDump> {
+    console.log('SDK: downloadHistoricalData called for deviceId', deviceId);
+    const deviceSession = this.getDeviceSession(deviceId);
+    if (!deviceSession) {
+      console.error(`SDK: No device session found for deviceId ${deviceId}`);
+      throw new Error(`No device session found for deviceId ${deviceId}`);
+    }
+    console.log('SDK: Downloading historical data for deviceId', deviceId);
+    const date = new Date();
+    const deviceName = deviceSession.getConnectedDevice().name;
+
+    return downloadHistoricalData(
+      deviceId,
+      deviceName,
+      date,
+      deviceSession.getHistoricalDataPacketsStream(),
+      this.storage.saveHistoricalDataDump.bind(this.storage),
+      bufferSize,
+    );
   }
 
   /**
