@@ -1,19 +1,25 @@
-export function generateStorageKey(deviceName: string, date: Date): string {
+export function generateDataDumpStorageKey(
+  deviceName: string,
+  date: Date,
+): string {
   const dateString = date.toISOString(); // Format as YYYY-MM-DD
-  return `${deviceName}_${dateString}`;
+  return `datadump_${deviceName}_${dateString}`;
 }
 
-export function parseStorageKey(key: string): {
+export function parseDataDumpStorageKey(key: string): {
   deviceName: string;
   date: Date;
 } | null {
   const parts = key.split('_');
-  if (parts.length !== 2) {
+  if (parts.length !== 3) {
     return null; // Invalid key format
   }
 
-  const deviceName = parts[0];
-  const date = new Date(parts[1]);
+  if (parts[0] !== 'datadump') {
+    return null; // Not a data dump key
+  }
+  const deviceName = parts[1];
+  const date = new Date(parts[2]);
 
   if (isNaN(date.getTime())) {
     return null; // Invalid date
@@ -22,14 +28,14 @@ export function parseStorageKey(key: string): {
   return { deviceName, date };
 }
 
-export function filterStorageKeys(
+export function filterDataDumpStorageKeys(
   keys: string[],
   deviceName?: string,
   fromDate?: Date,
   toDate?: Date,
 ): string[] {
   return keys.filter((key) => {
-    const parsed = parseStorageKey(key);
+    const parsed = parseDataDumpStorageKey(key);
     if (!parsed) {
       return false; // Invalid key format
     }
