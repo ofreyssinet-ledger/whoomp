@@ -10,3 +10,9 @@ export type HistoricalDataPacket = {
   /** Optional, original data for reference */
   originalData: Uint8Array;
 };
+
+export type HistoricalDataDump = {
+  deviceName: string;
+  date: Date;
+  dataDump: Array<HistoricalDataPacket>;
+};

@@ -1,7 +1,11 @@
-import { HistoricalDataPacket } from './model';
+import { HistoricalDataDump } from './model';
 
 export interface Storage {
-  saveParsedHistoricalData(
-    data: Record<string, HistoricalDataPacket>,
-  ): Promise<void>;
+  saveHistoricalDataDump(HistoricalDataDump: HistoricalDataDump): Promise<void>;
+
+  getHistoricalDataDumps(
+    deviceName?: string,
+    fromDate?: Date,
+    toDate?: Date,
+  ): Promise<Array<HistoricalDataDump>>;
 }
