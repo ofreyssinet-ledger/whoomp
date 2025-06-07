@@ -1,4 +1,4 @@
-import { Observable, of, throwError, concat } from 'rxjs';
+import { Observable, of, throwError, concat, first } from 'rxjs';
 import { downloadHistoricalData } from './downloadHistoricalData';
 import { HistoricalDataDump, HistoricalDataPacket } from '../../data/model';
 
@@ -28,7 +28,6 @@ describe('downloadHistoricalData', () => {
     const promise = downloadHistoricalData(
       deviceId,
       deviceName,
-      baseDate,
       dataStream,
       saveFn,
       3,
@@ -49,10 +48,10 @@ describe('downloadHistoricalData', () => {
     expect(secondCallArg.date).toEqual(new Date(packets[5].timestampMs));
     expect(secondCallArg.dataDump).toEqual(packets.slice(3, 6));
 
-    // Verify final promise value contains the passed baseDate and all packets
-    expect(result.deviceName).toBe(deviceName);
-    expect(result.date).toBe(baseDate);
-    expect(result.dataDump).toEqual(packets);
+    // Final result should include all dataDumps
+    expect(result.length).toBe(2);
+    expect(result[0]).toBe(firstCallArg);
+    expect(result[1]).toBe(secondCallArg);
   });
 
   it('flushes an incomplete final buffer when the stream completes', async () => {
@@ -63,7 +62,6 @@ describe('downloadHistoricalData', () => {
     const promise = downloadHistoricalData(
       deviceId,
       deviceName,
-      baseDate,
       dataStream,
       saveFn,
       3,
@@ -83,8 +81,9 @@ describe('downloadHistoricalData', () => {
     expect(secondChunk.date).toEqual(new Date(packets[4].timestampMs));
 
     // Final result should include all 5 packets
-    expect(result.dataDump).toEqual(packets);
-    expect(result.date).toBe(baseDate);
+    expect(result.length).toBe(2);
+    expect(result[0]).toBe(firstChunk);
+    expect(result[1]).toBe(secondChunk);
   });
 
   it('does not flush an incomplete final buffer when the stream errors', async () => {
@@ -102,7 +101,6 @@ describe('downloadHistoricalData', () => {
       await downloadHistoricalData(
         deviceId,
         deviceName,
-        baseDate,
         errorStream,
         saveFn,
         3,
@@ -131,7 +129,6 @@ describe('downloadHistoricalData', () => {
     const result = await downloadHistoricalData(
       deviceId,
       deviceName,
-      baseDate,
       dataStream,
       saveFn,
       1,
@@ -142,9 +139,10 @@ describe('downloadHistoricalData', () => {
       const callArg = saveFn.mock.calls[idx][0];
       expect(callArg.dataDump).toEqual([pkt]);
       expect(callArg.date).toEqual(new Date(pkt.timestampMs));
+      expect(result[idx]).toEqual(callArg);
     });
 
-    expect(result.dataDump).toEqual(packets);
+    expect(result.length).toBe(3);
   });
 
   it('handles an empty stream (no packets)', async () => {
@@ -156,15 +154,12 @@ describe('downloadHistoricalData', () => {
     const result = await downloadHistoricalData(
       deviceId,
       deviceName,
-      baseDate,
       dataStream,
       saveFn,
       3,
     );
 
     expect(saveFn).not.toHaveBeenCalled();
-    expect(result.dataDump).toEqual([]);
-    expect(result.deviceName).toBe(deviceName);
-    expect(result.date).toBe(baseDate);
+    expect(result).toEqual([]);
   });
 });

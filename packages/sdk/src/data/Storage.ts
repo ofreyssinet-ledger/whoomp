@@ -9,9 +9,13 @@ export interface Storage {
     toDate?: Date,
   ): Promise<Array<HistoricalDataDump>>;
 
-  deleteHistoricalDataDumps(
+  deleteHistoricalDataDumpsInRange(
     deviceName?: string,
     fromDate?: Date,
     toDate?: Date,
+  ): Promise<void>;
+
+  deleteHistoricalDataDump(
+    historicalDataDump: HistoricalDataDump,
   ): Promise<void>;
 }

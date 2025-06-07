@@ -159,7 +159,7 @@ export class Sdk {
   async downloadHistoricalData(
     deviceId: string,
     bufferSize = 36000,
-  ): Promise<HistoricalDataDump> {
+  ): Promise<Array<HistoricalDataDump>> {
     console.log('SDK: downloadHistoricalData called for deviceId', deviceId);
     const deviceSession = this.getDeviceSession(deviceId);
     if (!deviceSession) {
@@ -167,13 +167,11 @@ export class Sdk {
       throw new Error(`No device session found for deviceId ${deviceId}`);
     }
     console.log('SDK: Downloading historical data for deviceId', deviceId);
-    const date = new Date();
     const deviceName = deviceSession.getConnectedDevice().name;
 
     return downloadHistoricalData(
       deviceId,
       deviceName,
-      date,
       deviceSession.getHistoricalDataPacketsStream(),
       this.storage.saveHistoricalDataDump.bind(this.storage),
       bufferSize,

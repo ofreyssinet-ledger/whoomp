@@ -61,7 +61,7 @@ export const mmkvStorage: Storage = {
     return dumps;
   },
 
-  deleteHistoricalDataDumps: async (deviceName, fromDate, toDate) => {
+  deleteHistoricalDataDumpsInRange: async (deviceName, fromDate, toDate) => {
     const allKeys = storage.getAllKeys();
     const keys = filterDataDumpStorageKeys(
       allKeys,
@@ -74,5 +74,14 @@ export const mmkvStorage: Storage = {
       storage.delete(key);
       console.log(`Deleted historical data dump for key ${key}`);
     }
+  },
+
+  deleteHistoricalDataDump: async historicalDataDump => {
+    const {deviceName, date} = historicalDataDump;
+    const key = generateDataDumpStorageKey(deviceName, date);
+    storage.delete(key);
+    console.log(
+      `[mmkvStorage][deleteHistoricalDataDump] Deleted historical data dump for ${deviceName} on ${date}`,
+    );
   },
 };
