@@ -1,13 +1,11 @@
-// App.tsx
 import {
-  DeviceSessionState,
-  DeviceState,
   filterDataDumpStorageKeys,
   GetBatteryLevelCommand,
   GetClockCommand,
   GetHelloHarvardCommand,
   ReportVersionInfoCommand,
   Sdk,
+  serializeHistoricalDataDump,
   type ConnectedDevice as SDKConnectedDevice,
 } from '@whoomp/sdk';
 
@@ -21,27 +19,20 @@ import {
   Text,
   View,
 } from 'react-native';
-import {firstValueFrom, Observable, throttleTime} from 'rxjs';
+import {firstValueFrom} from 'rxjs';
 import {ReactNativeBleTransport} from './RNBleTransport';
 import {mmkvStorage, storage} from './data/MMKVStorage';
+import {exportTextData} from './data/exportData';
+import {
+  useDeviceSessionState,
+  useDeviceState,
+  useHeartRate,
+  useMostRecentHistoricalData,
+  useStateFromObservable,
+} from './hooks';
 
 type ConnectedDeviceProps = {
   connectedDevice: SDKConnectedDevice;
-};
-
-const useStateFromObservable: <T>(
-  observable: Observable<T>,
-) => T | null = observable => {
-  const [state, setState] = useState<T | null>(null);
-
-  useEffect(() => {
-    const subscription = observable.subscribe(value => {
-      setState(value);
-    });
-    return () => subscription.unsubscribe();
-  }, [observable]);
-
-  return state;
 };
 
 const SendCommandsComponent: React.FC<{
@@ -86,45 +77,6 @@ const SendCommandsComponent: React.FC<{
         }
       />
     </>
-  );
-};
-
-const useDeviceState = (
-  connectedDevice: SDKConnectedDevice,
-): DeviceState | null => {
-  return useStateFromObservable(connectedDevice.deviceStateObservable);
-};
-
-const useDeviceSessionState = (
-  connectedDevice: SDKConnectedDevice,
-): DeviceSessionState | null => {
-  return useStateFromObservable(connectedDevice.deviceSessionState);
-};
-
-const useHeartRate = (connectedDevice: SDKConnectedDevice): number | null => {
-  const heartRateEvents = useStateFromObservable(
-    connectedDevice.heartRateFromStrapObservable,
-  );
-  if (!heartRateEvents || heartRateEvents.length === 0) {
-    return null;
-  }
-  // Return the most recent heart rate event's BPM
-  const lastEvent = heartRateEvents[heartRateEvents.length - 1];
-  return lastEvent.bpm;
-};
-
-const useMostRecentHistoricalData = (
-  connectedDevice: SDKConnectedDevice,
-  /**
-   * Throttle time in milliseconds for historical data updates.
-   * Use at least 1000ms to avoid overwhelming the UI.
-   */
-  throttleTimeMs: number = 1000,
-) => {
-  return useStateFromObservable(
-    connectedDevice.mostRecentHistoricalDataPacket.pipe(
-      throttleTime(throttleTimeMs),
-    ),
   );
 };
 
@@ -255,6 +207,37 @@ const ConnectedDeviceItem: React.FC<ConnectedDeviceProps & {sdk: Sdk}> = ({
           connectedDevice.abortDownload();
         }}
       />
+      <Button
+        title="Export 72h historical data"
+        onPress={() => {
+          console.log(`Exporting historical data for ${id}...`);
+          sdk
+            .getMergedHistoricalDataDump(
+              id,
+              new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 72 hours
+            )
+            .then(dump => {
+              console.log(`Merged historical data dump for ${id}:`);
+
+              const serializedData = serializeHistoricalDataDump(
+                dump.deviceName,
+                dump.date,
+                dump.dataDump,
+                false, // Exclude original data for export
+              );
+              console.log('serializedData:', serializedData.length);
+              exportTextData({
+                data: serializedData,
+                filename: `historical_data_${
+                  dump.deviceName
+                }_${dump.date.toISOString()}`,
+              });
+            })
+            .catch(err => {
+              console.error(`Error exporting data for ${id}:`, err);
+            });
+        }}
+      />
       <MostRecentHistoricalDataPacket connectedDevice={connectedDevice} />
     </View>
   );
@@ -267,26 +250,12 @@ export function App() {
   });
 
   useEffect(() => {
-    console.log(
-      '[App] Initializing SDK with storage data:',
-      Object.fromEntries(
-        storage.getAllKeys().map(key => {
-          const data = storage.getString(key);
-          return [key, data];
-        }),
-      ),
-    );
-    console.log(
-      filterDataDumpStorageKeys(storage.getAllKeys())
-        .map(key => {
-          const data = storage.getString(key);
-          return data;
-        })
-        .join('\n'),
-    );
-    // storage.getAllKeys().forEach(key => {
-    //   storage.delete(key);
-    // });
+    const storageKeys = storage.getAllKeys();
+    const historicalDataKeys = filterDataDumpStorageKeys(storageKeys);
+    console.log('[App] Initializing SDK with storage keys:', {
+      storageKeys,
+      historicalDataKeys,
+    });
   }, []);
 
   useEffect(() => {
@@ -305,10 +274,6 @@ export function App() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Button
-          title="sdk.helloWorld()"
-          onPress={() => console.log(sdk.helloWorld())}
-        />
         <View style={styles.spacer} />
         <Button
           title="Connect to a WHOOP device"

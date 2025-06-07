@@ -1,8 +1,9 @@
-import { BehaviorSubject, bufferCount, map, Observable, tap } from 'rxjs';
+import { BehaviorSubject, map, Observable } from 'rxjs';
 import { Command } from './device/Command';
 import { ConnectedDevice, DeviceSession } from './device/DeviceSession';
 import { DiscoveredDevice, type Transport } from './device/Transport';
 import { HistoricalDataDump } from './data/model';
+import { mergeHistoricalDataDumps } from './data/utils';
 import { downloadHistoricalData } from './device/download/downloadHistoricalData';
 import { Storage } from './data/Storage';
 
@@ -176,6 +177,39 @@ export class Sdk {
       this.storage.saveHistoricalDataDump.bind(this.storage),
       bufferSize,
     );
+  }
+
+  async getMergedHistoricalDataDump(
+    deviceId: string,
+    fromDate?: Date,
+    toDate?: Date,
+  ): Promise<HistoricalDataDump> {
+    const deviceSession = this.getDeviceSession(deviceId);
+    if (!deviceSession) {
+      console.error(`SDK: No device session found for deviceId ${deviceId}`);
+      throw new Error(`No device session found for deviceId ${deviceId}`);
+    }
+    const deviceName = deviceSession.getConnectedDevice().name;
+    const dumps = await this.storage.getHistoricalDataDumps(
+      deviceName,
+      fromDate,
+      toDate,
+    );
+
+    return mergeHistoricalDataDumps(dumps);
+  }
+
+  abortAllDownloads(): void {
+    console.log('SDK: abortAllDownloads called');
+    const sessions = this.deviceSessions.getValue();
+    for (const session of Object.values(sessions)) {
+      console.log(
+        'SDK: Aborting download for device',
+        session.getConnectedDevice().id,
+      );
+      session.getConnectedDevice().abortDownload();
+    }
+    console.log('SDK: All downloads aborted');
   }
 
   /**

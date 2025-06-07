@@ -13,8 +13,11 @@ function StringToUint8Array(str: string): Uint8Array {
   return new Uint8Array(str.split(',').map(Number));
 }
 
+const placeholderUint8Array = new Uint8Array(0);
+
 export function serializeHistoricalDataPacket(
   packet: HistoricalDataPacket,
+  includeOriginalData: boolean = true,
 ): string {
   const { timestampMs, heartRate, rr, unknown, originalData } = packet;
   return [
@@ -22,7 +25,9 @@ export function serializeHistoricalDataPacket(
     heartRate.toString(),
     JSON.stringify(rr),
     unknown.toString(),
-    Uint8ArrayToString(originalData),
+    Uint8ArrayToString(
+      includeOriginalData ? originalData : placeholderUint8Array,
+    ),
   ].join(main_separator);
 }
 
@@ -65,9 +70,12 @@ export function historicalDataPacketTypeguard(packet: unknown) {
   );
 }
 
-function serializeDataPackets(dataPackets: HistoricalDataPacket[]): string {
+function serializeDataPackets(
+  dataPackets: HistoricalDataPacket[],
+  includeOriginalData = true,
+): string {
   return dataPackets
-    .map((packet) => serializeHistoricalDataPacket(packet))
+    .map((packet) => serializeHistoricalDataPacket(packet, includeOriginalData))
     .join('\n');
 }
 
@@ -75,8 +83,9 @@ export function serializeHistoricalDataDump(
   deviceName: string,
   date: Date,
   dataDump: HistoricalDataPacket[],
+  includeOriginalData: boolean = true,
 ): string {
-  const serializedPackets = serializeDataPackets(dataDump);
+  const serializedPackets = serializeDataPackets(dataDump, includeOriginalData);
   return `${deviceName}\n${date.toISOString()}\n${serializedPackets}`;
 }
 

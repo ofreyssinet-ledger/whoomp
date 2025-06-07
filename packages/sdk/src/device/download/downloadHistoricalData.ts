@@ -1,9 +1,6 @@
 import { bufferCount, Observable, tap } from 'rxjs';
-import {
-  HistoricalDataDump,
-  HistoricalDataPacket,
-  makeHistoricalDataDump,
-} from '../../data/model';
+import { HistoricalDataDump, HistoricalDataPacket } from '../../data/model';
+import { makeHistoricalDataDump } from '../../data/utils';
 
 // async function defragmentSavedDumps(): Promise<HistoricalDataDump> {
 //   console.log(

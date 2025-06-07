@@ -34,24 +34,26 @@ export function filterDataDumpStorageKeys(
   fromDate?: Date,
   toDate?: Date,
 ): string[] {
-  return keys.filter((key) => {
-    const parsed = parseDataDumpStorageKey(key);
-    if (!parsed) {
-      return false; // Invalid key format
-    }
+  return keys
+    .filter((key) => {
+      const parsed = parseDataDumpStorageKey(key);
+      if (!parsed) {
+        return false; // Invalid key format
+      }
 
-    if (deviceName && parsed.deviceName !== deviceName) {
-      return false; // Device name does not match
-    }
+      if (deviceName && parsed.deviceName !== deviceName) {
+        return false; // Device name does not match
+      }
 
-    if (fromDate && parsed.date < fromDate) {
-      return false; // Date is before fromDate
-    }
+      if (fromDate && parsed.date < fromDate) {
+        return false; // Date is before fromDate
+      }
 
-    if (toDate && parsed.date > toDate) {
-      return false; // Date is after toDate
-    }
+      if (toDate && parsed.date > toDate) {
+        return false; // Date is after toDate
+      }
 
-    return true; // Key matches all criteria
-  });
+      return true; // Key matches all criteria
+    })
+    .sort(); // Sort keys alphabetically
 }
