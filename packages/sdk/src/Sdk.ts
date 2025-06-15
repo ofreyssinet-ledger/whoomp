@@ -263,7 +263,9 @@ export class Sdk {
         status,
       );
       if (status && status.lastSyncedMs) {
-        effectiveFromDate = new Date(status.lastSyncedMs);
+        const ms25H = 25 * 60 * 60 * 1000; // 25 hours in milliseconds
+        // Analyse data from 25h before the last synced date to get the 24h RHR
+        effectiveFromDate = new Date(status.lastSyncedMs - ms25H);
       } else {
         // just sync from the beginning
       }
