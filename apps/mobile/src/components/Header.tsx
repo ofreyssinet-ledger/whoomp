@@ -18,8 +18,14 @@ import {
   useDeviceSessionState,
   useDeviceState,
   useHeartRate,
+  useMostRecentHistoricalData,
 } from '../hooks/connectedDeviceHooks';
 import {useAppState} from '../context/AppStateContext';
+import {useSdk} from '../context/SdkContext';
+import {useLiveQuery} from 'drizzle-orm/expo-sqlite';
+import {useDrizzleDB} from '../hooks/useDrizzleDB';
+import {lastSync} from '../db/schema';
+import {eq} from 'drizzle-orm';
 
 const monospaceFont = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -41,9 +47,66 @@ const DeviceName = () => {
   );
 };
 
-const DeviceStatus = () => {
+function useLastSyncDate() {
   const displayedDevice = useDisplayedDeviceOrThrow();
-  return <Text style={{fontSize: 14, color: 'gray'}}>Last sync: N/A</Text>;
+
+  const drizzleDB = useDrizzleDB();
+
+  const {data: syncStatus} = useLiveQuery(
+    drizzleDB
+      .select()
+      .from(lastSync)
+      .where(eq(lastSync.deviceName, displayedDevice.deviceName))
+      .limit(1),
+  );
+
+  const deviceSyncStatus = syncStatus?.[0];
+
+  return deviceSyncStatus ? new Date(deviceSyncStatus.lastSyncedMs) : null;
+}
+
+const DeviceStatusNotConnected = () => {
+  const lastSyncDate = useLastSyncDate();
+
+  const lastSyncReadableDate = lastSyncDate
+    ? lastSyncDate.toLocaleString()
+    : 'N/A';
+
+  return (
+    <Text style={{fontSize: 14, color: 'gray'}}>
+      Last sync: {lastSyncReadableDate}
+    </Text>
+  );
+};
+
+const DeviceStatusConnected = () => {
+  const lastSyncDate = useLastSyncDate();
+
+  const lastSyncReadableDate = lastSyncDate
+    ? lastSyncDate.toLocaleString()
+    : 'N/A';
+
+  const connectedDevice = useDisplayedConnectedDeviceThrowIfNull();
+  const deviceSessionState = useDeviceSessionState(connectedDevice);
+
+  const {downloadingHistoricalData} = deviceSessionState || {};
+
+  const mostRecentHistoricalData = useMostRecentHistoricalData(
+    connectedDevice,
+    1000,
+  );
+
+  const mostRecentPacketDate = mostRecentHistoricalData
+    ? new Date(mostRecentHistoricalData.timestampMs)
+    : null;
+
+  return (
+    <Text style={{fontSize: 14, color: 'gray'}}>
+      {downloadingHistoricalData && mostRecentPacketDate
+        ? `Syncing... ${mostRecentPacketDate.toLocaleDateString()}, ${mostRecentPacketDate.toLocaleTimeString()}`
+        : `Last sync: ${lastSyncReadableDate}`}
+    </Text>
+  );
 };
 
 const ConnectButton = () => {
@@ -189,6 +252,37 @@ const DeviceSessionState = () => {
   );
 };
 
+const SyncButton = () => {
+  const connectedDevice = useDisplayedConnectedDeviceThrowIfNull();
+  const sdk = useSdk();
+
+  const [syncing, setSyncing] = React.useState(false);
+
+  const handlePress = () => {
+    if (syncing) {
+      // If already syncing, abort the sync
+      sdk.abortAllDownloads();
+      setSyncing(false);
+      return;
+    } else {
+      setSyncing(true);
+      sdk
+        .syncDeviceData(connectedDevice.id)
+        .catch(error => {
+          console.error('Sync failed:', error);
+          setSyncing(false);
+        })
+        .finally(() => {
+          setSyncing(false);
+        });
+    }
+  };
+
+  return (
+    <Button title={syncing ? 'Abort sync' : 'Sync'} onPress={handlePress} />
+  );
+};
+
 export default function Header() {
   const connectedDevice = useDisplayedConnectedDevice();
 
@@ -215,7 +309,11 @@ export default function Header() {
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
           <View style={{rowGap: 4}}>
             <DeviceName />
-            <DeviceStatus />
+            {connectedDevice ? (
+              <DeviceStatusConnected />
+            ) : (
+              <DeviceStatusNotConnected />
+            )}
           </View>
           <View style={{flex: 1}} />
           {Boolean(connectedDevice) ? (
@@ -232,6 +330,7 @@ export default function Header() {
         <View style={{marginTop: 16, rowGap: 8}}>
           {Boolean(connectedDevice) && <DeviceState />}
           {Boolean(connectedDevice) && <DeviceSessionState />}
+          {Boolean(connectedDevice) && <SyncButton />}
           {Boolean(connectedDevice) && <DisconnectButton />}
           {!connectedDevice && <ConnectAnotherDeviceButton />}
         </View>

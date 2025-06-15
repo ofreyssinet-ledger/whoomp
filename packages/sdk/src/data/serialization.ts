@@ -19,15 +19,12 @@ export function serializeHistoricalDataPacket(
   packet: HistoricalDataPacket,
   includeOriginalData: boolean = true,
 ): string {
-  const { timestampMs, heartRate, rr, unknown, originalData } = packet;
+  const { timestampMs, heartRate, rr, unknown } = packet;
   return [
     timestampMs.toString(),
     heartRate.toString(),
     JSON.stringify(rr),
     unknown.toString(),
-    Uint8ArrayToString(
-      includeOriginalData ? originalData : placeholderUint8Array,
-    ),
   ].join(main_separator);
 }
 
@@ -65,8 +62,7 @@ export function historicalDataPacketTypeguard(packet: unknown) {
     Array.isArray((packet as HistoricalDataPacket).rr) &&
     !(packet.rr as number[]).some(isNaN) &&
     typeof (packet as HistoricalDataPacket).unknown === 'number' &&
-    !isNaN(packet.unknown as number) &&
-    (packet as HistoricalDataPacket).originalData instanceof Uint8Array
+    !isNaN(packet.unknown as number)
   );
 }
 

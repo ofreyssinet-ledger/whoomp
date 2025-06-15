@@ -1,6 +1,6 @@
 type RawData = Array<{ timestampMs: number; heartRate: number }>;
 
-type AnalysedDataPoint = { timestampMs: number; heartRate: number };
+export type AnalysedDataPoint = { timestampMs: number; heartRate: number };
 type AnalysedDataSet = Array<AnalysedDataPoint>;
 
 export type AnalysedDataResult = {
@@ -96,19 +96,23 @@ export function analyseData(rawData: RawData): AnalysedDataResult {
     sampleMs: number,
   ): AnalysedDataSet {
     if (src.length === 0) return [];
-    const t2 = src.map((p) => p.timestampMs);
-    const v2 = src.map((p) => p.heartRate);
+    const timestamps = src.map((p) => p.timestampMs);
+    const heartRates = src.map((p) => p.heartRate);
     const res: AnalysedDataSet = [];
-    const start = Math.ceil(t2[0] / sampleMs) * sampleMs;
-    const end = t2[t2.length - 1];
+
+    // We only want to compute the 24h RHR if we have at least 24h of data.
+    const startTimestamp = timestamps[0] + MS_24H;
+
+    const start = Math.ceil(startTimestamp / sampleMs) * sampleMs;
+    const end = timestamps[timestamps.length - 1];
     for (let t = start; t <= end; t += sampleMs) {
       const wStart = t - windowMs;
-      const i0 = lowerBound(t2, wStart);
-      const i1 = upperBound(t2, t) - 1;
-      if (i0 <= i1) {
-        let m = Infinity;
-        for (let i = i0; i <= i1; i++) {
-          if (v2[i] < m) m = v2[i];
+      const startIndex = lowerBound(timestamps, wStart);
+      const endIndex = upperBound(timestamps, t) - 1;
+      if (startIndex <= endIndex) {
+        let m = Infinity; // m is the minimum heart rate in the window
+        for (let i = startIndex; i <= endIndex; i++) {
+          if (heartRates[i] < m) m = heartRates[i];
         }
         res.push({ timestampMs: t, heartRate: m });
       }

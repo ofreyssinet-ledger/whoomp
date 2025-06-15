@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "05619811-f843-436c-b533-0272d0d7065d",
-  "prevId": "b2b08f1b-182a-4326-84ed-54ae50433707",
+  "id": "c158744b-c043-4214-bf24-04dd9b4dbe40",
+  "prevId": "50daeefd-3f4c-4b06-9cdd-cabe20696a25",
   "tables": {
     "heart_rate_avg_1min": {
       "name": "heart_rate_avg_1min",
@@ -10,7 +10,7 @@
         "timestamp_ms": {
           "name": "timestamp_ms",
           "type": "integer",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -31,7 +31,15 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "heart_rate_avg_1min_timestamp_ms_device_name_pk": {
+          "columns": [
+            "timestamp_ms",
+            "device_name"
+          ],
+          "name": "heart_rate_avg_1min_timestamp_ms_device_name_pk"
+        }
+      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
@@ -41,7 +49,7 @@
         "timestamp_ms": {
           "name": "timestamp_ms",
           "type": "integer",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -62,7 +70,15 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "heart_rate_avg_2min_timestamp_ms_device_name_pk": {
+          "columns": [
+            "timestamp_ms",
+            "device_name"
+          ],
+          "name": "heart_rate_avg_2min_timestamp_ms_device_name_pk"
+        }
+      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
@@ -72,7 +88,7 @@
         "timestamp_ms": {
           "name": "timestamp_ms",
           "type": "integer",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -93,7 +109,68 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "heart_rate_avg_5min_timestamp_ms_device_name_pk": {
+          "columns": [
+            "timestamp_ms",
+            "device_name"
+          ],
+          "name": "heart_rate_avg_5min_timestamp_ms_device_name_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "historical_data_points": {
+      "name": "historical_data_points",
+      "columns": {
+        "timestamp_ms": {
+          "name": "timestamp_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "heart_rate": {
+          "name": "heart_rate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rr": {
+          "name": "rr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "device_name": {
+          "name": "device_name",
+          "type": "text(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "unknown": {
+          "name": "unknown",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "historical_data_points_timestamp_ms_device_name_pk": {
+          "columns": [
+            "timestamp_ms",
+            "device_name"
+          ],
+          "name": "historical_data_points_timestamp_ms_device_name_pk"
+        }
+      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
@@ -128,13 +205,37 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "last_sync": {
+      "name": "last_sync",
+      "columns": {
+        "device_name": {
+          "name": "device_name",
+          "type": "text(100)",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_synced_ms": {
+          "name": "last_synced_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "resting_heart_rate_24h": {
       "name": "resting_heart_rate_24h",
       "columns": {
         "timestamp_ms": {
           "name": "timestamp_ms",
           "type": "integer",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -155,7 +256,15 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "resting_heart_rate_24h_timestamp_ms_device_name_pk": {
+          "columns": [
+            "timestamp_ms",
+            "device_name"
+          ],
+          "name": "resting_heart_rate_24h_timestamp_ms_device_name_pk"
+        }
+      },
       "uniqueConstraints": {},
       "checkConstraints": {}
     }

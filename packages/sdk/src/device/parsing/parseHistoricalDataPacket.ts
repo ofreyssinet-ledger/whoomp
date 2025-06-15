@@ -50,6 +50,5 @@ export function parseHistoricalDataPacket(
     unknown: unk,
     heartRate: heart,
     rr,
-    originalData: new Uint8Array(), // Let's not keep it for now
   };
 }

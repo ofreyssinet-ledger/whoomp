@@ -1,4 +1,4 @@
-import { BehaviorSubject, map, Observable } from 'rxjs';
+import { BehaviorSubject, map, merge, Observable } from 'rxjs';
 import { Command } from './device/Command';
 import { ConnectedDevice, DeviceSession } from './device/DeviceSession';
 import { DiscoveredDevice, type Transport } from './device/Transport';
@@ -6,7 +6,7 @@ import { HistoricalDataDump } from './data/model';
 import { mergeHistoricalDataDumps } from './data/utils';
 import { downloadHistoricalData } from './device/download/downloadHistoricalData';
 import { Storage } from './data/Storage';
-import { analyseData, AnalysedDataResult } from './analysis/analyseData';
+import { analyseData } from './analysis/analyseData';
 
 export class Sdk {
   transport: Transport;
@@ -196,7 +196,12 @@ export class Sdk {
       deviceId,
       deviceName,
       deviceSession.getHistoricalDataPacketsStream(),
-      this.storage.saveHistoricalDataDump.bind(this.storage),
+      (dataDump: HistoricalDataDump) => {
+        return this.storage.saveHistoricalDataPackets(
+          deviceName,
+          dataDump.dataDump,
+        );
+      },
       bufferSize,
     );
   }
@@ -221,55 +226,138 @@ export class Sdk {
     return mergeHistoricalDataDumps(dumps);
   }
 
-  async analyseLast48hData(deviceId: string): Promise<AnalysedDataResult> {
-    console.log('SDK: analyseLast24hData called for deviceId', deviceId);
+  async syncDeviceData(deviceId: string, fromDate?: Date) {
+    console.log('SDK: [syncDeviceData] called for deviceId', deviceId);
+    let downloadedData: Array<HistoricalDataDump> = [];
+    try {
+      downloadedData = await this.downloadHistoricalData(deviceId);
+    } catch (error) {
+      console.error(
+        'SDK: [syncDeviceData] Error downloading historical data for deviceId',
+        deviceId,
+        error,
+      );
+      return;
+    }
+    console.log(
+      'SDK: [syncDeviceData] Download completed for deviceId',
+      deviceId,
+      'with',
+      downloadedData.length,
+    );
     const deviceSession = this.getDeviceSession(deviceId);
     if (!deviceSession) {
       console.error(`SDK: No device session found for deviceId ${deviceId}`);
       throw new Error(`No device session found for deviceId ${deviceId}`);
     }
     const deviceName = deviceSession.getConnectedDevice().name;
-    const data = await this.getMergedHistoricalDataDump(
-      deviceId,
-      new Date(Date.now() - 48 * 60 * 60 * 1000), // Last 48 hours
-    );
+
+    let effectiveFromDate: Date | undefined = fromDate;
+    if (!effectiveFromDate) {
+      console.log(
+        'SDK: [syncDeviceData] No effectiveFromDate provided, checking storage for last synced date',
+      );
+      const status = await this.storage.getDeviceSyncStatus(deviceName);
+      console.log(
+        'SDK: [syncDeviceData] Device sync status retrieved:',
+        status,
+      );
+      if (status && status.lastSyncedMs) {
+        effectiveFromDate = new Date(status.lastSyncedMs);
+      } else {
+        // just sync from the beginning
+      }
+    }
 
     console.log(
-      'SDK: Merged historical data dump for deviceId',
-      deviceId,
-      data,
+      'SDK: [syncDeviceData] Effective from date for analysis is',
+      effectiveFromDate?.toUTCString(),
     );
-    const analysedData = analyseData(data.dataDump);
-    console.log('SDK: Analysed data for deviceId', deviceId, analysedData);
-    const { hrAvg1min, hrAvg2min, hrAvg5min, rhr24h } = analysedData;
+    await this.analyseDeviceData(
+      deviceName,
+      effectiveFromDate,
+      undefined,
+      true,
+    );
+    console.log(
+      'SDK: [syncDeviceData] Data synced and analysed for device',
+      deviceName,
+    );
+  }
+
+  async analyseDeviceData(
+    deviceName: string,
+    fromDate?: Date,
+    toDate?: Date,
+    eraseExistingAnalysis: boolean = true,
+  ) {
+    console.log(
+      'SDK: [analyseDeviceData] called for deviceName',
+      deviceName,
+      'fromDate',
+      fromDate?.toUTCString(),
+      'toDate',
+      toDate?.toUTCString(),
+    );
+    // First, fetch the historical data dumps for the device
+    const dump = await this.storage.getHistoricalDataDumpNew(
+      deviceName,
+      fromDate,
+      toDate,
+    );
+    console.log(
+      'SDK: [analyseDeviceData] Historical data dump retrieved for deviceName',
+      deviceName,
+      'with',
+      dump.length,
+      'data points',
+    );
+
+    // Now, analyze the merged data
+    const analysedData = analyseData(dump);
+
+    console.log(
+      'SDK: [analyseDeviceData] Data analysis completed for deviceName',
+      deviceName,
+    );
+
+    // If eraseExisting is true, erase the existing data in storage
+    if (eraseExistingAnalysis) {
+      this.storage.deleteHeartRateAverage1min(deviceName, fromDate, toDate);
+      this.storage.deleteHeartRateAverage2min(deviceName, fromDate, toDate);
+      this.storage.deleteHeartRateAverage5min(deviceName, fromDate, toDate);
+    }
+
+    // Save the new analysis results to storage
     this.storage.saveHeartRateAverage1min(
-      hrAvg1min.map((data) => ({
+      analysedData.hrAvg1min.map((data) => ({
         ...data,
         date: new Date(data.timestampMs),
         deviceName,
       })),
     );
     this.storage.saveHeartRateAverage2min(
-      hrAvg2min.map((data) => ({
+      analysedData.hrAvg2min.map((data) => ({
         ...data,
         date: new Date(data.timestampMs),
         deviceName,
       })),
     );
     this.storage.saveHeartRateAverage5min(
-      hrAvg5min.map((data) => ({
+      analysedData.hrAvg5min.map((data) => ({
         ...data,
         date: new Date(data.timestampMs),
         deviceName,
       })),
     );
     this.storage.saveRestingHeartRate24h(
-      rhr24h.map((data) => ({
+      analysedData.rhr24h.map((data) => ({
         ...data,
         date: new Date(data.timestampMs),
         deviceName,
       })),
     );
+    this.storage.saveSyncStatus(deviceName, dump[dump.length - 1].timestampMs);
     return analysedData;
   }
 

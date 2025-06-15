@@ -8,7 +8,6 @@ describe('downloadHistoricalData', () => {
     unknown: 0,
     heartRate: 60 + i,
     rr: [800 + i],
-    originalData: new Uint8Array([i]),
   });
 
   let saveFn: jest.Mock<Promise<void>, [HistoricalDataDump]>;

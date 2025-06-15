@@ -1,4 +1,4 @@
-import { HistoricalDataDump } from './model';
+import { HistoricalDataDump, HistoricalDataPacket } from './model';
 
 export interface Storage {
   /**
@@ -8,11 +8,22 @@ export interface Storage {
    */
   saveHistoricalDataDump(HistoricalDataDump: HistoricalDataDump): Promise<void>;
 
+  saveHistoricalDataPackets(
+    deviceName: string,
+    historicalDataPackets: Array<HistoricalDataPacket>,
+  ): Promise<void>;
+
   getHistoricalDataDumps(
     deviceName?: string,
     fromDate?: Date,
     toDate?: Date,
   ): Promise<Array<HistoricalDataDump>>;
+
+  getHistoricalDataDumpNew(
+    deviceName?: string,
+    fromDate?: Date,
+    toDate?: Date,
+  ): Promise<Array<HistoricalDataPacket>>;
 
   deleteHistoricalDataDumpsInRange(
     deviceName?: string,
@@ -39,6 +50,11 @@ export interface Storage {
     fromDate?: Date,
     toDate?: Date,
   ): Promise<Array<{ date: Date; heartRate: number }>>;
+  deleteHeartRateAverage1min(
+    deviceName?: string,
+    fromDate?: Date,
+    toDate?: Date,
+  ): Promise<void>;
 
   /** HR 2Min moving average*/
   saveHeartRateAverage2min(
@@ -49,6 +65,11 @@ export interface Storage {
     fromDate?: Date,
     toDate?: Date,
   ): Promise<Array<{ date: Date; heartRate: number }>>;
+  deleteHeartRateAverage2min(
+    deviceName?: string,
+    fromDate?: Date,
+    toDate?: Date,
+  ): Promise<void>;
 
   /** HR 5Min moving average*/
   saveHeartRateAverage5min(
@@ -59,17 +80,26 @@ export interface Storage {
     fromDate?: Date,
     toDate?: Date,
   ): Promise<Array<{ date: Date; heartRate: number }>>;
+  deleteHeartRateAverage5min(
+    deviceName?: string,
+    fromDate?: Date,
+    toDate?: Date,
+  ): Promise<void>;
 
   /** Resting HR of last 24h */
   saveRestingHeartRate24h(
     data: Array<{ date: Date; heartRate: number; deviceName: string }>,
   ): Promise<void>;
-
   getRestingHeartRate24h(
     deviceName?: string,
     fromDate?: Date,
     toDate?: Date,
   ): Promise<Array<{ date: Date; heartRate: number }>>;
+  deleteRestingHeartRate24h(
+    deviceName?: string,
+    fromDate?: Date,
+    toDate?: Date,
+  ): Promise<void>;
 
   /**
    *
@@ -99,4 +129,16 @@ export interface Storage {
   deleteKnownDevice(deviceId: string): Promise<void>;
 
   deleteKnownDevices(): Promise<void>;
+
+  /**
+   * SYNC STATUS
+   */
+  saveSyncStatus(deviceName: string, lastSyncedMs: number): Promise<void>;
+
+  getDeviceSyncStatus(deviceName: string): Promise<{
+    deviceName: string;
+    lastSyncedMs: number;
+  } | null>;
+
+  deleteDeviceSyncStatus(deviceName: string): Promise<void>;
 }
