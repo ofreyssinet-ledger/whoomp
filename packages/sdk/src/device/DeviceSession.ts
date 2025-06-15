@@ -143,15 +143,16 @@ export class DeviceSession {
     );
 
     this.monitorDeviceState();
+    this.toggleRealTimeHR(true);
   }
 
   /**
    * Releases the resources used by this DeviceSession, and disconnects the device.
    * This should be called when the session is no longer needed.
    */
-  release() {
+  destroy() {
     console.log(
-      '[DeviceSession][release] Releasing DeviceSession for device',
+      '[DeviceSession][destroy] Destroying DeviceSession for device',
       this.connectedDevice.id,
     );
     this.connectedDevice.disconnect();
@@ -160,6 +161,26 @@ export class DeviceSession {
       clearTimeout(this.monitoringTimeout);
       this.monitoringTimeout = null;
     }
+  }
+
+  pause() {
+    console.log(
+      '[DeviceSession][pause] Pausing DeviceSession for device',
+      this.connectedDevice.id,
+    );
+    // stop monitoring the device state
+    if (this.monitoringTimeout) {
+      clearTimeout(this.monitoringTimeout);
+      this.monitoringTimeout = null;
+    }
+  }
+
+  resume() {
+    console.log(
+      '[DeviceSession][resume] Resuming DeviceSession for device',
+      this.connectedDevice.id,
+    );
+    this.monitorDeviceState();
   }
 
   monitoringInterval: number = 5000; // 5 seconds
@@ -253,8 +274,8 @@ export class DeviceSession {
   }
 
   private realtimeHREnabled = false;
-  private async toggleRealTimeHR(): Promise<boolean> {
-    const newValue = !this.realtimeHREnabled;
+  private async toggleRealTimeHR(newVal?: boolean): Promise<boolean> {
+    const newValue = newVal ?? !this.realtimeHREnabled;
     const command = new ToggleRealtimeHRCommand(newValue);
     await this.sendCommandInternal(command);
     this.realtimeHREnabled = newValue;
@@ -354,18 +375,18 @@ export class DeviceSession {
       const historicalPacketsSub = this.dataPacketsFromStrap
         .pipe(filter((packet) => packet.type === PacketType.HISTORICAL_DATA))
         .subscribe((packet) => {
-          console.log(
-            '[DeviceSession][getHistoricalDataPackets] Historical data packet received',
-            packet,
-          );
+          // console.log(
+          //   '[DeviceSession][getHistoricalDataPackets] Historical data packet received',
+          //   packet,
+          // );
           try {
             const parsedPacket = parseHistoricalDataPacket(packet);
             const { timestampMs, heartRate, unknown, rr } = parsedPacket;
             subscriber.next(parsedPacket);
             this.mostRecentHistoricalDataPacket.next(parsedPacket);
-            console.log(
-              `[DeviceSession][getHistoricalDataPackets] Parsed data packet: timestamp=${timestampMs}, date=${new Date(timestampMs).toISOString()}, heartRate=${heartRate}, unknown=${unknown}, rr=${JSON.stringify(rr)}`,
-            );
+            // console.log(
+            //   `[DeviceSession][getHistoricalDataPackets] Parsed data packet: timestamp=${timestampMs}, date=${new Date(timestampMs).toISOString()}, heartRate=${heartRate}, unknown=${unknown}, rr=${JSON.stringify(rr)}`,
+            // );
           } catch (error) {
             console.error(error);
           }

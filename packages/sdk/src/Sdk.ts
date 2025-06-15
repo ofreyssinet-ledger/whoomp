@@ -6,6 +6,7 @@ import { HistoricalDataDump } from './data/model';
 import { mergeHistoricalDataDumps } from './data/utils';
 import { downloadHistoricalData } from './device/download/downloadHistoricalData';
 import { Storage } from './data/Storage';
+import { analyseData, AnalysedDataResult } from './analysis/analyseData';
 
 export class Sdk {
   transport: Transport;
@@ -29,10 +30,24 @@ export class Sdk {
         'SDK: Releasing session for device',
         session.getConnectedDevice().id,
       );
-      session.release();
+      session.destroy();
     });
     this.deviceSessions.complete();
     console.log('SDK: All sessions released and deviceSessions completed');
+  }
+
+  pause() {
+    console.log('SDK: pause called');
+    Object.values(this.deviceSessions.getValue()).forEach((session) => {
+      session.pause();
+    });
+  }
+
+  resume() {
+    console.log('SDK: resume called');
+    Object.values(this.deviceSessions.getValue()).forEach((session) => {
+      session.resume();
+    });
   }
 
   helloWorld() {
@@ -79,7 +94,7 @@ export class Sdk {
       const { [id]: sessionToRemove, ...remainingSessions } =
         this.deviceSessions.getValue();
       console.log('Session to remove:', sessionToRemove);
-      sessionToRemove?.release();
+      sessionToRemove?.destroy();
       this.deviceSessions.next(remainingSessions);
     };
 
@@ -87,6 +102,13 @@ export class Sdk {
       id,
       onDisconnectWrapper,
     );
+
+    this.storage.saveKnownDevice(
+      connectedDevice.id,
+      connectedDevice.name,
+      Date.now(),
+    );
+
     console.log(
       '[SDK][connectToDevice] Device connected, creating session for id',
       id,
@@ -197,6 +219,58 @@ export class Sdk {
     );
 
     return mergeHistoricalDataDumps(dumps);
+  }
+
+  async analyseLast48hData(deviceId: string): Promise<AnalysedDataResult> {
+    console.log('SDK: analyseLast24hData called for deviceId', deviceId);
+    const deviceSession = this.getDeviceSession(deviceId);
+    if (!deviceSession) {
+      console.error(`SDK: No device session found for deviceId ${deviceId}`);
+      throw new Error(`No device session found for deviceId ${deviceId}`);
+    }
+    const deviceName = deviceSession.getConnectedDevice().name;
+    const data = await this.getMergedHistoricalDataDump(
+      deviceId,
+      new Date(Date.now() - 48 * 60 * 60 * 1000), // Last 48 hours
+    );
+
+    console.log(
+      'SDK: Merged historical data dump for deviceId',
+      deviceId,
+      data,
+    );
+    const analysedData = analyseData(data.dataDump);
+    console.log('SDK: Analysed data for deviceId', deviceId, analysedData);
+    const { hrAvg1min, hrAvg2min, hrAvg5min, rhr24h } = analysedData;
+    this.storage.saveHeartRateAverage1min(
+      hrAvg1min.map((data) => ({
+        ...data,
+        date: new Date(data.timestampMs),
+        deviceName,
+      })),
+    );
+    this.storage.saveHeartRateAverage2min(
+      hrAvg2min.map((data) => ({
+        ...data,
+        date: new Date(data.timestampMs),
+        deviceName,
+      })),
+    );
+    this.storage.saveHeartRateAverage5min(
+      hrAvg5min.map((data) => ({
+        ...data,
+        date: new Date(data.timestampMs),
+        deviceName,
+      })),
+    );
+    this.storage.saveRestingHeartRate24h(
+      rhr24h.map((data) => ({
+        ...data,
+        date: new Date(data.timestampMs),
+        deviceName,
+      })),
+    );
+    return analysedData;
   }
 
   abortAllDownloads(): void {

@@ -2,43 +2,6 @@ import { bufferCount, Observable, tap } from 'rxjs';
 import { HistoricalDataDump, HistoricalDataPacket } from '../../data/model';
 import { makeHistoricalDataDump } from '../../data/utils';
 
-// async function defragmentSavedDumps(): Promise<HistoricalDataDump> {
-//   console.log(
-//     '[downloadHistoricalData] Defragmenting saved data dumps for deviceId',
-//     deviceId,
-//     savedDataDumps.length,
-//   );
-//   const fullDump = makeHistoricalDataDump(
-//     deviceName,
-//     savedDataDumps.flatMap((dump) => dump.dataDump),
-//   );
-//   // TODO: add an id for each data dump so we can first save the new one
-//   // and then delete the old ones. not possible now because the last of
-//   // the saved dumps has the same storage key as the full dump.
-//   await Promise.all(
-//     savedDataDumps.map((dump) => {
-//       deleteHistoricalDataDump(dump).catch((err) => {
-//         console.error(
-//           '[downloadHistoricalData] Error deleting historical data dump',
-//           dump.deviceName,
-//           dump.date,
-//           err,
-//         );
-//       });
-//     }),
-//   );
-//   console.log(
-//     '[downloadHistoricalData] Saving full data dump for deviceId',
-//     deviceId,
-//   );
-//   await saveHistoricalDataDump(fullDump);
-//   console.log(
-//     '[downloadHistoricalData] Full data dump saved for deviceId',
-//     deviceId,
-//   );
-//   return fullDump;
-// }
-
 export function downloadHistoricalData(
   deviceId: string,
   deviceName: string,

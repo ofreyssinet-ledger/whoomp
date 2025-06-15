@@ -4,7 +4,7 @@ import statistics
 from datetime import datetime
 
 # window size (seconds) for rolling average
-WINDOW_SECONDS = 20 * 60
+WINDOW_SECONDS = 5 * 60
 
 # window size (seconds) for HRV (RMSSD) calculation
 HRV_WINDOW_SECONDS = 3600

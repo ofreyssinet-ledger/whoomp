@@ -9,11 +9,9 @@ import {Platform, PermissionsAndroid} from 'react-native';
 import {
   BehaviorSubject,
   filter,
-  first,
   firstValueFrom,
   Observable,
   Subject,
-  Subscription,
 } from 'rxjs';
 import {
   Transport,
@@ -174,7 +172,7 @@ export class ReactNativeBleTransport implements Transport {
 
       // Teardown: stop scanning on unsubscribe
       return () => {
-        console.log('Stopping device scan...');
+        console.log('[ReactNativeBleTransport] Stopping device scan...');
         this.manager.stopDeviceScan();
       };
     });
@@ -194,7 +192,17 @@ export class ReactNativeBleTransport implements Transport {
     console.log(
       `[RNBleTransport][connectToDevice] Connecting to device: ${id}`,
     );
-    const device: Device = await this.manager.connectToDevice(id);
+    const device: Device = await this.manager
+      .connectToDevice(id, {
+        timeout: 10e3, // 10 seconds timeout
+      })
+      .catch(error => {
+        console.error(
+          `[RNBleTransport][connectToDevice] Connection error:`,
+          error,
+        );
+        throw new Error(`Failed to connect to device ${id}: ${error.message}`);
+      });
     console.log(
       `[RNBleTransport][connectToDevice] Discovering services and characteristics for device: ${device.id}`,
     );

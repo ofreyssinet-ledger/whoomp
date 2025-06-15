@@ -3,21 +3,8 @@ import {
   DeviceState,
   DeviceSessionState,
 } from '@whoomp/sdk';
-import {useState, useEffect} from 'react';
-import {Observable, throttleTime} from 'rxjs';
-
-export function useStateFromObservable<T>(observable: Observable<T>): T | null {
-  const [state, setState] = useState<T | null>(null);
-
-  useEffect(() => {
-    const subscription = observable.subscribe(value => {
-      setState(value);
-    });
-    return () => subscription.unsubscribe();
-  }, [observable]);
-
-  return state;
-}
+import {throttleTime} from 'rxjs';
+import {useStateFromObservable} from './useStateFromObservable';
 
 export function useDeviceState(
   connectedDevice: SDKConnectedDevice,
