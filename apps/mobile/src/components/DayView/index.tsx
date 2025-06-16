@@ -58,9 +58,11 @@ export const DayView = ({data, minMaxHR}: Props) => {
           {new Date(rhrPoint?.measuredAtMs).toLocaleString()})
         </Text>
         <Text>1-Minute Average HR Data size: {data.hrAvg1min.length}</Text> */}
-        {rhrPoint && <RestHeartRate rhrPoint={rhrPoint} />}
       </View>
       <DayGraph data={data} minMaxHR={minMaxHR} width={'100%'} />
+      <View style={{padding: 16, marginTop: 16}}>
+        {rhrPoint && <RestHeartRate rhrPoint={rhrPoint} />}
+      </View>
 
       {/* Add similar sections for hrAvg2min, hrAvg5min, and rhr24h */}
     </View>

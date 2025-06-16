@@ -7,6 +7,9 @@ import {DayData} from '../../model/dayData';
 // @ts-expect-error
 import interFont from '../../../assets/fonts/Inter.ttf';
 
+// Toggle log scale on/off
+const USE_LOG_SCALE = true;
+
 type Props = {
   data: DayData;
   width: number | string;
@@ -15,67 +18,74 @@ type Props = {
 
 export const DayGraph: React.FC<Props> = React.memo(
   ({data, width, minMaxHR}) => {
-    const {chunkStartMs, chunkEndMs, hrAvg1min, rhr24h} = data;
-
-    const displayedAvgHR = hrAvg1min;
-
+    const {chunkStartMs, chunkEndMs, hrAvg1min, hrAvg2min, hrAvg5min, rhr24h} =
+      data;
+    const displayedAvgHR = hrAvg2min;
     const {minHR, maxHR} = minMaxHR;
+
     const font = useFont(interFont, 16);
 
-    console.log({minMaxHR});
-
-    const startOfDay = useMemo(() => {
-      const d = new Date(chunkStartMs);
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-    }, [chunkStartMs]);
-    const firstMidnight =
-      chunkStartMs <= startOfDay ? startOfDay : startOfDay + 86_400_000;
-
+    // x-axis ticks every 6h
     const xTicks = useMemo(() => {
-      const startDate = new Date(chunkStartMs);
-      const localHour = startDate.getHours();
-      const baseHour = Math.floor(localHour / 6) * 6;
-      const baseTick = new Date(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate(),
+      const d = new Date(chunkStartMs);
+      const baseHour = Math.floor(d.getHours() / 6) * 6;
+      const base = new Date(
+        d.getFullYear(),
+        d.getMonth(),
+        d.getDate(),
         baseHour,
         0,
         0,
         0,
       ).getTime();
-      // generate five 6h‐apart ticks, then filter to [start, end)
-      return Array.from(
-        {length: 5},
-        (_, i) => baseTick + i * 6 * 60 * 60 * 1000,
-      ).filter(t => t >= chunkStartMs && t < chunkEndMs);
+      return Array.from({length: 5}, (_, i) => base + i * 21_600_000) // 6h
+        .filter(t => t >= chunkStartMs && t < chunkEndMs);
     }, [chunkStartMs, chunkEndMs]);
 
-    const yTicks = useMemo(() => {
-      return Array.from(
-        {length: Math.floor(maxHR / 25) + 1},
-        (_, i) => (i + 1) * 25,
-      );
-    }, [maxHR]);
+    // linear y-ticks
+    const yTicks = useMemo(
+      () =>
+        Array.from(
+          {length: Math.floor(maxHR / 25) + 1},
+          (_, i) => (i + 1) * 25,
+        ),
+      [maxHR],
+    );
 
+    // log-transformed y-ticks
+    const logYTicks = USE_LOG_SCALE ? yTicks.map(v => Math.log10(v)) : [];
+
+    // x-axis label formatter
     const formatX = (ms: number) => {
-      if (ms === firstMidnight) {
-        return new Date(ms).toLocaleDateString(undefined, {
-          day: '2-digit',
-          month: '2-digit',
-        });
-      }
-      return `${new Date(ms).getHours()}h`;
+      const h = new Date(ms).getHours();
+      return h === 0
+        ? new Date(ms).toLocaleDateString(undefined, {
+            day: '2-digit',
+            month: '2-digit',
+          })
+        : `${h}h`;
     };
 
+    // prepare your data, applying log10 if needed
     const combined = useMemo(() => {
       const map = new Map(rhr24h.map(p => [p.timestampMs, p.heartRate]));
-      return displayedAvgHR.map(p => ({
-        timestamp: p.timestampMs,
-        hr: p.heartRate,
-        rhr: map.get(p.timestampMs) ?? undefined,
-      }));
+      return displayedAvgHR.map(p => {
+        const hrVal = p.heartRate;
+        const rhrVal = map.get(p.timestampMs);
+        return {
+          timestamp: p.timestampMs,
+          hr: USE_LOG_SCALE ? Math.log10(hrVal) : hrVal,
+          rhr:
+            rhrVal == null
+              ? undefined
+              : USE_LOG_SCALE
+              ? Math.log10(rhrVal)
+              : rhrVal,
+        };
+      });
     }, [displayedAvgHR, rhr24h]);
+
+    if (!font) return null;
 
     return (
       <View style={[styles.container]}>
@@ -83,26 +93,39 @@ export const DayGraph: React.FC<Props> = React.memo(
           data={combined}
           xKey="timestamp"
           yKeys={['hr', 'rhr']}
-          domain={{x: [chunkStartMs, chunkEndMs], y: [minHR, maxHR + 10]}}
+          domain={{
+            x: [chunkStartMs, chunkEndMs],
+            y: USE_LOG_SCALE
+              ? [Math.log10(minHR), Math.log10(maxHR + 10)]
+              : [minHR, maxHR + 10],
+          }}
           xAxis={{
             tickValues: xTicks,
             formatXLabel: formatX,
             labelColor: 'grey',
+
             font,
-            labelOffset: -40,
+            labelPosition: 'inset',
           }}
+          padding={{left: 0}}
           yAxis={[
             {
-              tickValues: yTicks,
-              formatYLabel: v => `${v}`,
+              tickValues: USE_LOG_SCALE ? logYTicks : yTicks,
+              formatYLabel: v =>
+                USE_LOG_SCALE ? `${Math.round(10 ** (v ?? 0))}` : `${v}`,
               labelColor: 'grey',
-              //   font,
-              labelOffset: 0,
+              font,
+              labelPosition: 'inset',
             },
           ]}>
           {({points}) => (
             <>
-              <Line points={points.hr} color="#fe2c55" strokeWidth={2} />
+              <Line
+                points={points.hr}
+                color="#fe2c55"
+                strokeWidth={1}
+                curveType="linear"
+              />
               {/* <Line points={points.rhr} color="blue" strokeWidth={2} /> */}
             </>
           )}
