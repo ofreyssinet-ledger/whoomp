@@ -20,6 +20,8 @@ const config = {
       resolve(__dirname, '../../node_modules'),
     ],
     sourceExts: [...sourceExts, 'mjs', 'sql'],
+    assetExts: [...assetExts, 'ttf'],
+
     // NOTE: react-native is the default, browser added to fix axios issue where nodejs version is the default export
     unstable_conditionNames: ['react-native', 'browser'],
     unstable_enablePackageExports: true,

@@ -2,6 +2,7 @@ import React from 'react';
 import {View, Text, useWindowDimensions} from 'react-native';
 import {DayData} from '../../model/dayData';
 import {formatRelativeDate} from '../../helpers/formatRelativeDate';
+import {DayGraph} from './DayGraph';
 
 type Props = {
   data: DayData;
@@ -25,26 +26,26 @@ export const DayView = ({data}: Props) => {
         </Text>
         <Text>1-Minute Average HR Data size: {data.hrAvg1min.length}</Text>
       </View>
-      <DayGraph data={data} />
+      <DayGraph data={data} width={'100%'} />
 
       {/* Add similar sections for hrAvg2min, hrAvg5min, and rhr24h */}
     </View>
   );
 };
 
-const DayGraph = ({data}: {data: DayData}) => {
-  // Placeholder for future graph implementation
-  return (
-    <View
-      style={{
-        height: 200,
-        backgroundColor: '#f0f0f0',
-        marginTop: 16,
-        borderWidth: 1,
-      }}>
-      <Text style={{textAlign: 'center', paddingTop: 80}}>
-        Graph will be implemented here
-      </Text>
-    </View>
-  );
-};
+// const DayGraph = ({data}: {data: DayData}) => {
+//   // Placeholder for future graph implementation
+//   return (
+//     <View
+//       style={{
+//         height: 200,
+//         backgroundColor: '#f0f0f0',
+//         marginTop: 16,
+//         borderWidth: 1,
+//       }}>
+//       <Text style={{textAlign: 'center', paddingTop: 80}}>
+//         Graph will be implemented here
+//       </Text>
+//     </View>
+//   );
+// };

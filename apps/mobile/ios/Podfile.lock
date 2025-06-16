@@ -1521,6 +1521,32 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - react-native-skia (2.0.4):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React
+    - React-callinvoker
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - react-native-slider (4.5.7):
     - DoubleConversion
     - glog
@@ -1894,6 +1920,30 @@ PODS:
     - React-utils (= 0.79.2)
   - rn-fetch-blob (0.12.0):
     - React-Core
+  - RNGestureHandler (2.26.0):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - RNReanimated (3.18.0):
     - DoubleConversion
     - glog
@@ -2097,6 +2147,7 @@ DEPENDENCIES:
   - react-native-ble-plx (from `../node_modules/react-native-ble-plx`)
   - react-native-mmkv (from `../node_modules/react-native-mmkv`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
+  - "react-native-skia (from `../node_modules/@shopify/react-native-skia`)"
   - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
   - "React-NativeModulesApple (from `../../../node_modules/.pnpm/react-native@0.79.2_@babel+core@7.27.1_@react-native-community+cli@18.0.0_typescript@5._742115007f45b5c03a6de81d056fccec/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)"
   - "React-oscompat (from `../../../node_modules/.pnpm/react-native@0.79.2_@babel+core@7.27.1_@react-native-community+cli@18.0.0_typescript@5._742115007f45b5c03a6de81d056fccec/node_modules/react-native/ReactCommon/oscompat`)"
@@ -2130,6 +2181,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios`)
   - "ReactCommon/turbomodule/core (from `../../../node_modules/.pnpm/react-native@0.79.2_@babel+core@7.27.1_@react-native-community+cli@18.0.0_typescript@5._742115007f45b5c03a6de81d056fccec/node_modules/react-native/ReactCommon`)"
   - rn-fetch-blob (from `../node_modules/rn-fetch-blob`)
+  - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNShare (from `../node_modules/react-native-share`)
   - "Yoga (from `../../../node_modules/.pnpm/react-native@0.79.2_@babel+core@7.27.1_@react-native-community+cli@18.0.0_typescript@5._742115007f45b5c03a6de81d056fccec/node_modules/react-native/ReactCommon/yoga`)"
@@ -2239,6 +2291,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-mmkv"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
+  react-native-skia:
+    :path: "../node_modules/@shopify/react-native-skia"
   react-native-slider:
     :path: "../node_modules/@react-native-community/slider"
   React-NativeModulesApple:
@@ -2305,6 +2359,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/.pnpm/react-native@0.79.2_@babel+core@7.27.1_@react-native-community+cli@18.0.0_typescript@5._742115007f45b5c03a6de81d056fccec/node_modules/react-native/ReactCommon"
   rn-fetch-blob:
     :path: "../node_modules/rn-fetch-blob"
+  RNGestureHandler:
+    :path: "../node_modules/react-native-gesture-handler"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNShare:
@@ -2363,6 +2419,7 @@ SPEC CHECKSUMS:
   react-native-ble-plx: eac3b9fc70e1b605e7e76cd4b5324eeedfa517ed
   react-native-mmkv: 2421db62a08da22d1b97ea4d55adfee9ea0f88a1
   react-native-safe-area-context: dc279397abf103b0577f48c548630b7e639646a7
+  react-native-skia: 6b58701d096a74db07016db4f9443001b25923ba
   react-native-slider: 351d1186b07d686b93dad14ce2b474ca62dea0fc
   React-NativeModulesApple: 452b86b29fae99ed0a4015dca3ad9cd222f88abf
   React-oscompat: ef5df1c734f19b8003e149317d041b8ce1f7d29c
@@ -2396,6 +2453,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 1c741d12f197bf561ed6b75ad06be925c9954071
   ReactCommon: 4d0da92a5eb8da86c08e3ec34bd23ab439fb2461
   rn-fetch-blob: f065bb7ab7fb48dd002629f8bdcb0336602d3cba
+  RNGestureHandler: 970902e9f2f6308b2a2519ce93108fbc65460933
   RNReanimated: 1a2e663451e8084940c478bbba2c6e3144832aa3
   RNShare: 339d241dcefeef0099e6681ee1d08634ff669ff7
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
