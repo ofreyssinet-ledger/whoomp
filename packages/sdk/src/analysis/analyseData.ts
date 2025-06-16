@@ -1,27 +1,26 @@
-type RawData = Array<{ timestampMs: number; heartRate: number }>;
+import { AverageHRDataSet, RHRDataSet } from '../data/model';
 
-export type AnalysedDataPoint = { timestampMs: number; heartRate: number };
-type AnalysedDataSet = Array<AnalysedDataPoint>;
+type RawData = Array<{ timestampMs: number; heartRate: number }>;
 
 export type AnalysedDataResult = {
   /**
    * Heart rate averaged over 1-minute windows.
    */
-  hrAvg1min: AnalysedDataSet;
+  hrAvg1min: AverageHRDataSet;
   /**
    * Heart rate averaged over 2-minute windows.
    */
-  hrAvg2min: AnalysedDataSet;
+  hrAvg2min: AverageHRDataSet;
   /**
    * Heart rate averaged over 5-minute windows.
    */
-  hrAvg5min: AnalysedDataSet;
+  hrAvg5min: AverageHRDataSet;
   /**
    * Resting heart rate averaged over 24-hour windows.
    * Each point represents the minimum heart rate observed in that 24-hour period.
    * It is computed from the 5-minute averages.
    */
-  rhr24h: AnalysedDataSet;
+  rhr24h: RHRDataSet;
 };
 
 export function analyseData(rawData: RawData): AnalysedDataResult {
@@ -69,8 +68,8 @@ export function analyseData(rawData: RawData): AnalysedDataResult {
   function computeMovingAverage(
     windowMs: number,
     sampleMs: number,
-  ): AnalysedDataSet {
-    const result: AnalysedDataSet = [];
+  ): AverageHRDataSet {
+    const result: AverageHRDataSet = [];
     const startTs = Math.ceil(times[0] / sampleMs) * sampleMs;
     const endTs = times[times.length - 1];
     for (let t = startTs; t <= endTs; t += sampleMs) {
@@ -91,14 +90,14 @@ export function analyseData(rawData: RawData): AnalysedDataResult {
   const hrAvg5min = computeMovingAverage(MS_5MIN, MS_5MIN);
 
   function computeMinOverWindow(
-    src: AnalysedDataSet,
+    src: AverageHRDataSet,
     windowMs: number,
     sampleMs: number,
-  ): AnalysedDataSet {
+  ): RHRDataSet {
     if (src.length === 0) return [];
     const timestamps = src.map((p) => p.timestampMs);
     const heartRates = src.map((p) => p.heartRate);
-    const res: AnalysedDataSet = [];
+    const res: RHRDataSet = [];
 
     // We only want to compute the 24h RHR if we have at least 24h of data.
     const startTimestamp = timestamps[0] + MS_24H;
@@ -110,11 +109,17 @@ export function analyseData(rawData: RawData): AnalysedDataResult {
       const startIndex = lowerBound(timestamps, wStart);
       const endIndex = upperBound(timestamps, t) - 1;
       if (startIndex <= endIndex) {
-        let m = Infinity; // m is the minimum heart rate in the window
+        let min = Infinity; // m is the minimum heart rate in the window
+        let measuredAtMs: number | null = null;
         for (let i = startIndex; i <= endIndex; i++) {
-          if (heartRates[i] < m) m = heartRates[i];
+          if (heartRates[i] < min) {
+            min = heartRates[i];
+            measuredAtMs = timestamps[i];
+          }
         }
-        res.push({ timestampMs: t, heartRate: m });
+        if (measuredAtMs !== null) {
+          res.push({ timestampMs: t, heartRate: min, measuredAtMs });
+        }
       }
     }
     return res;

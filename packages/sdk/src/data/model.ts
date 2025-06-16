@@ -14,3 +14,9 @@ export type HistoricalDataDump = {
   date: Date;
   dataDump: Array<HistoricalDataPacket>;
 };
+
+export type AverageHRDataPoint = { timestampMs: number; heartRate: number };
+export type AverageHRDataSet = Array<AverageHRDataPoint>;
+
+export type RHRDataPoint = AverageHRDataPoint & { measuredAtMs: number };
+export type RHRDataSet = Array<RHRDataPoint>;

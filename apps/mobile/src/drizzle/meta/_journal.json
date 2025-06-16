@@ -15,6 +15,27 @@
       "when": 1750023695402,
       "tag": "0001_elite_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1750094125673,
+      "tag": "0002_common_khan",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1750098927080,
+      "tag": "0003_equal_skin",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1750099453817,
+      "tag": "0004_black_magneto",
+      "breakpoints": true
     }
   ]
 }

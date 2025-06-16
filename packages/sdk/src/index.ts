@@ -1,15 +1,12 @@
-export { HistoricalDataDump, type HistoricalDataPacket } from './data/model';
 export {
-  deserializeHistoricalDataDump,
-  historicalDataPacketTypeguard,
-  serializeHistoricalDataDump,
-} from './data/serialization';
+  type AverageHRDataSet,
+  type HistoricalDataDump,
+  type RHRDataPoint,
+  type RHRDataSet,
+  type AverageHRDataPoint,
+  type HistoricalDataPacket,
+} from './data/model';
 export { type Storage } from './data/Storage';
-export {
-  filterDataDumpStorageKeys,
-  generateDataDumpStorageKey,
-  parseDataDumpStorageKey,
-} from './data/storageUtils';
 export { BLEDeviceData } from './device/BLEDeviceData';
 export { GetBatteryLevelCommand } from './device/commands/GetBatteryLevelCommand';
 export { GetClockCommand } from './device/commands/GetClockCommand';

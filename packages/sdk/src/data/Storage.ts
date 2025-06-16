@@ -1,4 +1,8 @@
-import { HistoricalDataDump, HistoricalDataPacket } from './model';
+import {
+  AverageHRDataPoint,
+  HistoricalDataPacket,
+  RHRDataPoint,
+} from './model';
 
 export interface Storage {
   /**
@@ -6,34 +10,17 @@ export interface Storage {
    * HISTORICAL DATA DUMPS
    *
    */
-  saveHistoricalDataDump(HistoricalDataDump: HistoricalDataDump): Promise<void>;
 
   saveHistoricalDataPackets(
     deviceName: string,
     historicalDataPackets: Array<HistoricalDataPacket>,
   ): Promise<void>;
 
-  getHistoricalDataDumps(
-    deviceName?: string,
-    fromDate?: Date,
-    toDate?: Date,
-  ): Promise<Array<HistoricalDataDump>>;
-
   getHistoricalDataDumpNew(
     deviceName?: string,
     fromDate?: Date,
     toDate?: Date,
   ): Promise<Array<HistoricalDataPacket>>;
-
-  deleteHistoricalDataDumpsInRange(
-    deviceName?: string,
-    fromDate?: Date,
-    toDate?: Date,
-  ): Promise<void>;
-
-  deleteHistoricalDataDump(
-    historicalDataDump: HistoricalDataDump,
-  ): Promise<void>;
 
   /**
    *
@@ -43,13 +30,13 @@ export interface Storage {
 
   /** HR 1Min moving average*/
   saveHeartRateAverage1min(
-    data: Array<{ date: Date; heartRate: number; deviceName: string }>,
+    data: Array<AverageHRDataPoint & { deviceName: string }>,
   ): Promise<void>;
   getHeartRateAverage1min(
     deviceName?: string,
     fromDate?: Date,
     toDate?: Date,
-  ): Promise<Array<{ date: Date; heartRate: number }>>;
+  ): Promise<Array<AverageHRDataPoint>>;
   deleteHeartRateAverage1min(
     deviceName?: string,
     fromDate?: Date,
@@ -58,13 +45,13 @@ export interface Storage {
 
   /** HR 2Min moving average*/
   saveHeartRateAverage2min(
-    data: Array<{ date: Date; heartRate: number; deviceName: string }>,
+    data: Array<AverageHRDataPoint & { deviceName: string }>,
   ): Promise<void>;
   getHeartRateAverage2min(
     deviceName?: string,
     fromDate?: Date,
     toDate?: Date,
-  ): Promise<Array<{ date: Date; heartRate: number }>>;
+  ): Promise<Array<AverageHRDataPoint>>;
   deleteHeartRateAverage2min(
     deviceName?: string,
     fromDate?: Date,
@@ -73,13 +60,13 @@ export interface Storage {
 
   /** HR 5Min moving average*/
   saveHeartRateAverage5min(
-    data: Array<{ date: Date; heartRate: number; deviceName: string }>,
+    data: Array<AverageHRDataPoint & { deviceName: string }>,
   ): Promise<void>;
   getHeartRateAverage5min(
     deviceName?: string,
     fromDate?: Date,
     toDate?: Date,
-  ): Promise<Array<{ date: Date; heartRate: number }>>;
+  ): Promise<Array<AverageHRDataPoint>>;
   deleteHeartRateAverage5min(
     deviceName?: string,
     fromDate?: Date,
@@ -88,13 +75,13 @@ export interface Storage {
 
   /** Resting HR of last 24h */
   saveRestingHeartRate24h(
-    data: Array<{ date: Date; heartRate: number; deviceName: string }>,
+    data: Array<RHRDataPoint & { deviceName: string }>,
   ): Promise<void>;
   getRestingHeartRate24h(
     deviceName?: string,
     fromDate?: Date,
     toDate?: Date,
-  ): Promise<Array<{ date: Date; heartRate: number }>>;
+  ): Promise<Array<RHRDataPoint & { deviceName: string }>>;
   deleteRestingHeartRate24h(
     deviceName?: string,
     fromDate?: Date,

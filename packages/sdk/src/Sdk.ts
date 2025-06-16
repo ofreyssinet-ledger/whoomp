@@ -1,9 +1,7 @@
-import { BehaviorSubject, map, merge, Observable } from 'rxjs';
-import { Command } from './device/Command';
+import { BehaviorSubject, map, Observable } from 'rxjs';
 import { ConnectedDevice, DeviceSession } from './device/DeviceSession';
 import { DiscoveredDevice, type Transport } from './device/Transport';
 import { HistoricalDataDump } from './data/model';
-import { mergeHistoricalDataDumps } from './data/utils';
 import { downloadHistoricalData } from './device/download/downloadHistoricalData';
 import { Storage } from './data/Storage';
 import { analyseData } from './analysis/analyseData';
@@ -158,21 +156,6 @@ export class Sdk {
   }
 
   /**
-   * Sends a command to a connected device and returns the result.
-   * @param deviceId The ID of the device to send the command to.
-   * @param command The command to send.
-   * @returns A promise that resolves with the result of the command.
-   */
-  async sendCommand<T>(deviceId: string, command: Command<T>): Promise<T> {
-    const deviceSession = this.getDeviceSession(deviceId);
-    if (!deviceSession) {
-      console.error(`SDK: No device session found for deviceId ${deviceId}`);
-      throw new Error(`No device session found for deviceId ${deviceId}`);
-    }
-    return deviceSession.sendCommand(command);
-  }
-
-  /**
    * Downloads historical data for a connected device. Saves the data in chunks
    * to the storage using the provided buffer size.
    * @param deviceId The ID of the device to download data from.
@@ -204,26 +187,6 @@ export class Sdk {
       },
       bufferSize,
     );
-  }
-
-  async getMergedHistoricalDataDump(
-    deviceId: string,
-    fromDate?: Date,
-    toDate?: Date,
-  ): Promise<HistoricalDataDump> {
-    const deviceSession = this.getDeviceSession(deviceId);
-    if (!deviceSession) {
-      console.error(`SDK: No device session found for deviceId ${deviceId}`);
-      throw new Error(`No device session found for deviceId ${deviceId}`);
-    }
-    const deviceName = deviceSession.getConnectedDevice().name;
-    const dumps = await this.storage.getHistoricalDataDumps(
-      deviceName,
-      fromDate,
-      toDate,
-    );
-
-    return mergeHistoricalDataDumps(dumps);
   }
 
   async syncDeviceData(deviceId: string, fromDate?: Date) {
@@ -328,6 +291,7 @@ export class Sdk {
       this.storage.deleteHeartRateAverage1min(deviceName, fromDate, toDate);
       this.storage.deleteHeartRateAverage2min(deviceName, fromDate, toDate);
       this.storage.deleteHeartRateAverage5min(deviceName, fromDate, toDate);
+      this.storage.deleteRestingHeartRate24h(deviceName, fromDate, toDate);
     }
 
     // Save the new analysis results to storage
@@ -361,6 +325,36 @@ export class Sdk {
     );
     this.storage.saveSyncStatus(deviceName, dump[dump.length - 1].timestampMs);
     return analysedData;
+  }
+
+  async getAnalysedData(deviceName: string, fromDate?: Date, toDate?: Date) {
+    const hrAvg1min = await this.storage.getHeartRateAverage1min(
+      deviceName,
+      fromDate,
+      toDate,
+    );
+    const hrAvg2min = await this.storage.getHeartRateAverage2min(
+      deviceName,
+      fromDate,
+      toDate,
+    );
+    const hrAvg5min = await this.storage.getHeartRateAverage5min(
+      deviceName,
+      fromDate,
+      toDate,
+    );
+    const rhr24h = await this.storage.getRestingHeartRate24h(
+      deviceName,
+      fromDate,
+      toDate,
+    );
+
+    return {
+      hrAvg1min,
+      hrAvg2min,
+      hrAvg5min,
+      rhr24h,
+    };
   }
 
   abortAllDownloads(): void {

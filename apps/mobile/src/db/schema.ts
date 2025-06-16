@@ -5,7 +5,7 @@ export const historicalDataPoints = sqliteTable(
   {
     timestampMs: integer('timestamp_ms').notNull(),
     heartRate: integer('heart_rate').notNull(),
-    rr: text('rr', {mode: 'json'}).$type<number[]>(),
+    rr: text('rr', {mode: 'json'}).$type<number[]>().notNull(),
     deviceName: text('device_name', {length: 100}).notNull(),
     unknown: integer('unknown').notNull(),
   },
@@ -46,6 +46,7 @@ export const restingHeartRate24h = sqliteTable(
   'resting_heart_rate_24h',
   {
     timestampMs: integer('timestamp_ms').notNull(),
+    measuredAtMs: integer('measured_at_ms').notNull().default(0),
     heartRate: integer('heart_rate').notNull(),
     deviceName: text('device_name', {length: 100}).notNull(),
   },

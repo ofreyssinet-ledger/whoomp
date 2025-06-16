@@ -317,78 +317,48 @@ export default function Header() {
   }, [connectedDevice]);
 
   return (
-    <View
-      style={{
-        flexDirection: 'column',
-        backgroundColor: '#f0f0f0',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 8,
-        width: '100%',
-      }}>
-      <Pressable onPress={toggleExpanded}>
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
-          <View style={{rowGap: 4}}>
-            <DeviceName />
-            {connectedDevice ? (
-              <DeviceStatusConnected />
+    <View style={{width: '100%'}}>
+      <View
+        style={{
+          marginHorizontal: 16,
+          paddingHorizontal: 16,
+          flexDirection: 'column',
+          backgroundColor: '#f0f0f0',
+          paddingVertical: 8,
+          borderRadius: 8,
+        }}>
+        <Pressable onPress={toggleExpanded}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <View style={{rowGap: 4}}>
+              <DeviceName />
+              {connectedDevice ? (
+                <DeviceStatusConnected />
+              ) : (
+                <DeviceStatusNotConnected />
+              )}
+            </View>
+            <View style={{flex: 1}} />
+            {Boolean(connectedDevice) ? (
+              <View style={{rowGap: 4, alignItems: 'flex-end'}}>
+                <DeviceBattery />
+                <HeartRate />
+              </View>
             ) : (
-              <DeviceStatusNotConnected />
+              <ConnectButton />
             )}
           </View>
-          <View style={{flex: 1}} />
-          {Boolean(connectedDevice) ? (
-            <View style={{rowGap: 4, alignItems: 'flex-end'}}>
-              <DeviceBattery />
-              <HeartRate />
-            </View>
-          ) : (
-            <ConnectButton />
-          )}
-        </View>
-      </Pressable>
-      {expanded && (
-        <View style={{marginTop: 16, rowGap: 8}}>
-          {Boolean(connectedDevice) && <DeviceState />}
-          {Boolean(connectedDevice) && <DeviceSessionState />}
-          <DataCounts />
-          {Boolean(connectedDevice) && <SyncButton />}
-          {Boolean(connectedDevice) && <DisconnectButton />}
-          {!connectedDevice && <ConnectAnotherDeviceButton />}
-        </View>
-      )}
+        </Pressable>
+        {expanded && (
+          <View style={{marginTop: 16, rowGap: 8}}>
+            {Boolean(connectedDevice) && <DeviceState />}
+            {Boolean(connectedDevice) && <DeviceSessionState />}
+            <DataCounts />
+            {Boolean(connectedDevice) && <SyncButton />}
+            {Boolean(connectedDevice) && <DisconnectButton />}
+            {!connectedDevice && <ConnectAnotherDeviceButton />}
+          </View>
+        )}
+      </View>
     </View>
   );
-
-  //   return (
-  //     <View>
-  //       {connectedDevice ? (
-  //         <>
-  //           <Text>
-  //             Connected Device: {connectedDevice.name} (ID: {connectedDevice.id})
-  //           </Text>
-  //           <Button
-  //             title="Disconnect"
-  //             color="red"
-  //             onPress={() => {
-  //               connectedDevice.disconnect();
-  //             }}
-  //           />
-  //         </>
-  //       ) : displayedDevice ? (
-  //         <>
-  //           <Text>
-  //             Displayed Device: {displayedDevice.deviceName} (not connected)
-  //           </Text>
-  //           <Button
-  //             title="Connect"
-  //             disabled={connecting}
-  //             onPress={handleConnect}
-  //           />
-  //         </>
-  //       ) : (
-  //         <Text>No device displayed</Text>
-  //       )}
-  //     </View>
-  //   );
 }

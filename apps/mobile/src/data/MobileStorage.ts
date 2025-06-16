@@ -1,11 +1,4 @@
-import {
-  deserializeHistoricalDataDump,
-  filterDataDumpStorageKeys,
-  generateDataDumpStorageKey,
-  HistoricalDataDump,
-  serializeHistoricalDataDump,
-  Storage,
-} from '@whoomp/sdk';
+import {Storage} from '@whoomp/sdk';
 import {drizzle} from 'drizzle-orm/expo-sqlite';
 import {SQLiteDatabase} from 'expo-sqlite';
 import * as schema from '../db/schema';
@@ -20,8 +13,6 @@ import {and, asc, desc, eq, gte, lte, SQLWrapper} from 'drizzle-orm';
 import {MMKV} from 'react-native-mmkv';
 
 const MAX_VARS = 32766;
-
-export const storage = new MMKV();
 
 function filterDateAndDeviceNameForSchema(args: {
   schema: {timestampMs: SQLWrapper; deviceName: SQLWrapper};
@@ -73,58 +64,6 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
   getMaxVars();
 
   return {
-    saveHistoricalDataDump: async historicalDataDump => {
-      const {deviceName, date, dataDump} = historicalDataDump;
-      console.log(
-        `[MobileStorage][saveHistoricalDataDump] Saving historical data dump`,
-        historicalDataDump,
-      );
-      const key = generateDataDumpStorageKey(deviceName, date);
-      const serializedData = serializeHistoricalDataDump(
-        deviceName,
-        date,
-        dataDump,
-      );
-      console.log(
-        `[MobileStorage][saveHistoricalDataDump] Data serialized for key:`,
-        key,
-      );
-      storage.set(key, serializedData);
-      console.log(
-        `[MobileStorage][saveHistoricalDataDump] Saved historical data dump for ${deviceName} on ${date}`,
-      );
-    },
-
-    getHistoricalDataDumps: async (deviceName, fromDate, toDate) => {
-      const allKeys = storage.getAllKeys();
-      const keys = filterDataDumpStorageKeys(
-        allKeys,
-        deviceName,
-        fromDate,
-        toDate,
-      );
-      const dumps: Array<HistoricalDataDump> = [];
-
-      for (const key of keys) {
-        const serializedData = storage.getString(key);
-        if (serializedData) {
-          try {
-            const dump = deserializeHistoricalDataDump(serializedData);
-            dumps.push(dump);
-          } catch (error) {
-            console.error(
-              `Error deserializing data dump for key ${key}:`,
-              error,
-            );
-          }
-        } else {
-          console.warn(`No data found for key ${key}`);
-        }
-      }
-
-      return dumps;
-    },
-
     saveHistoricalDataPackets: async (deviceName, historicalDataPackets) => {
       console.log(
         `[MobileStorage][saveHistoricalDataPackets] Saving historical data packets`,
@@ -139,11 +78,8 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
           .insert(schema.historicalDataPoints)
           .values(
             batch.map(packet => ({
+              ...packet,
               deviceName: deviceName,
-              timestampMs: packet.timestampMs,
-              heartRate: packet.heartRate,
-              rr: packet.rr,
-              unknown: packet.unknown,
             })),
           )
           .onConflictDoNothing()
@@ -171,40 +107,7 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
             deviceName,
           }),
         )
-        .orderBy(asc(schema.historicalDataPoints.timestampMs))
-        .then(query =>
-          query.map(item => ({
-            deviceName: item.deviceName,
-            timestampMs: item.timestampMs,
-            heartRate: item.heartRate,
-            rr: [], // item.rr ?? [], // TODO: handle this
-            unknown: item.unknown,
-          })),
-        );
-    },
-
-    deleteHistoricalDataDumpsInRange: async (deviceName, fromDate, toDate) => {
-      const allKeys = storage.getAllKeys();
-      const keys = filterDataDumpStorageKeys(
-        allKeys,
-        deviceName,
-        fromDate,
-        toDate,
-      );
-
-      for (const key of keys) {
-        storage.delete(key);
-        console.log(`Deleted historical data dump for key ${key}`);
-      }
-    },
-
-    deleteHistoricalDataDump: async historicalDataDump => {
-      const {deviceName, date} = historicalDataDump;
-      const key = generateDataDumpStorageKey(deviceName, date);
-      storage.delete(key);
-      console.log(
-        `[MobileStorage][deleteHistoricalDataDump] Deleted historical data dump for ${deviceName} on ${date}`,
-      );
+        .orderBy(asc(schema.historicalDataPoints.timestampMs));
     },
 
     saveHeartRateAverage1min: async data => {
@@ -223,7 +126,7 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
           .insert(heartRateAverage1min)
           .values(
             batch.map(item => ({
-              timestampMs: item.date.getTime(),
+              timestampMs: item.timestampMs,
               heartRate: item.heartRate,
               deviceName: item.deviceName,
             })),
@@ -257,12 +160,9 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
               ? lte(heartRateAverage1min.timestampMs, toDate.getTime())
               : undefined,
           ),
-        );
-      return query.map(item => ({
-        date: new Date(item.timestampMs),
-        heartRate: item.heartRate,
-        deviceName: item.deviceName,
-      }));
+        )
+        .orderBy(asc(heartRateAverage1min.timestampMs));
+      return query;
     },
 
     deleteHeartRateAverage1min: async (deviceName, fromDate, toDate) => {
@@ -297,7 +197,7 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
           .insert(heartRateAverage2min)
           .values(
             batch.map(item => ({
-              timestampMs: item.date.getTime(),
+              timestampMs: item.timestampMs,
               heartRate: item.heartRate,
               deviceName: item.deviceName,
             })),
@@ -327,13 +227,7 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
             deviceName,
           }),
         )
-        .then(query =>
-          query.map(item => ({
-            date: new Date(item.timestampMs),
-            heartRate: item.heartRate,
-            deviceName: item.deviceName,
-          })),
-        );
+        .orderBy(asc(heartRateAverage2min.timestampMs));
     },
 
     deleteHeartRateAverage2min: async (deviceName, fromDate, toDate) => {
@@ -365,13 +259,7 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
         // Insert the batch into the database
         drizzleDb
           .insert(heartRateAverage5min)
-          .values(
-            batch.map(item => ({
-              timestampMs: item.date.getTime(),
-              heartRate: item.heartRate,
-              deviceName: item.deviceName,
-            })),
-          )
+          .values(batch)
           .onConflictDoNothing()
           .catch(error => {
             console.error(
@@ -396,12 +284,9 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
             toDate,
             deviceName,
           }),
-        );
-      return query.map(item => ({
-        date: new Date(item.timestampMs),
-        heartRate: item.heartRate,
-        deviceName: item.deviceName,
-      }));
+        )
+        .orderBy(asc(heartRateAverage5min.timestampMs));
+      return query;
     },
 
     deleteHeartRateAverage5min: async (deviceName, fromDate, toDate) => {
@@ -424,7 +309,7 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
       );
 
       // Insert data in batches to avoid exceeding max variable limit
-      const COLS_PER_ROW = 3; // timestampMs, heartRate, deviceName
+      const COLS_PER_ROW = 4; // timestampMs, heartRate, deviceName
       const maxRowsPerBatch = Math.floor(MAX_VARS / COLS_PER_ROW);
       for (let i = 0; i < data.length; i += maxRowsPerBatch) {
         const batch = data.slice(i, i + maxRowsPerBatch);
@@ -434,13 +319,7 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
         // Insert the batch into the database
         drizzleDb
           .insert(restingHeartRate24h)
-          .values(
-            batch.map(item => ({
-              timestampMs: item.date.getTime(),
-              heartRate: item.heartRate,
-              deviceName: item.deviceName,
-            })),
-          )
+          .values(batch)
           .onConflictDoNothing()
           .catch(error => {
             console.error(
@@ -465,12 +344,9 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
             toDate,
             deviceName,
           }),
-        );
-      return query.map(item => ({
-        date: new Date(item.timestampMs),
-        heartRate: item.heartRate,
-        deviceName: item.deviceName,
-      }));
+        )
+        .orderBy(asc(restingHeartRate24h.timestampMs));
+      return query;
     },
 
     deleteRestingHeartRate24h: async (deviceName, fromDate, toDate) => {
@@ -504,11 +380,7 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
         .select()
         .from(schema.knownDevices)
         .orderBy(asc(schema.knownDevices.lastConnectedMs));
-      return query.map(item => ({
-        deviceId: item.deviceId,
-        deviceName: item.deviceName,
-        lastConnectedMs: item.lastConnectedMs,
-      }));
+      return query;
     },
 
     getLastConnectedDevice: async () => {
@@ -601,38 +473,4 @@ export function mobileStorage(sqliteDB: SQLiteDatabase): Storage {
         .where(eq(schema.lastSync.deviceName, deviceName));
     },
   } satisfies Storage;
-}
-
-export async function migrateHistoricalDataDumps(storage: Storage) {
-  console.log(
-    `[MobileStorage][migrateHistoricalDataDumps] Starting migration from MMKV to SQLite`,
-  );
-  const allDataDumps = await storage.getHistoricalDataDumps();
-  console.log(
-    `[MobileStorage][migrateHistoricalDataDumps] Starting migration for ${allDataDumps.length} historical data dumps`,
-  );
-  for (const dump of allDataDumps) {
-    const packetsToSave = dump.dataDump.map(packet => ({
-      timestampMs: packet.timestampMs,
-      heartRate: packet.heartRate,
-      rr: packet.rr,
-      unknown: packet.unknown ?? 0,
-    }));
-
-    console.log(
-      `[MobileStorage][migrateHistoricalDataDumps] Migrating historical data dump for ${dump.deviceName} on ${dump.date} (${packetsToSave.length} packets)`,
-    );
-    await storage.saveHistoricalDataPackets(dump.deviceName, packetsToSave);
-    console.log(
-      `[MobileStorage][migrateHistoricalDataDumps] Successfully migrated historical data dump for ${dump.deviceName} on ${dump.date}`,
-    );
-  }
-  console.log(
-    `[MobileStorage][migrateHistoricalDataDumps] Migration completed for ${allDataDumps.length} historical data dumps`,
-  );
-
-  const newDataDumps = await storage.getHistoricalDataDumpNew();
-  console.log(
-    `[MobileStorage][migrateHistoricalDataDumps] New historical data dumps fetched: ${newDataDumps.length}`,
-  );
 }

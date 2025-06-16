@@ -1,16 +1,13 @@
-import React from 'react';
-import {Button, Text, View} from 'react-native';
-import Header from '../components/Header';
-import {useStorage} from '../context/StorageContext';
-import {migrateHistoricalDataDumps} from '../data/MobileStorage';
-import {useDrizzleDB} from '../hooks/useDrizzleDB';
-import {useLiveQuery} from 'drizzle-orm/expo-sqlite';
-import {restingHeartRate24h} from '../db/schema';
-import {
-  useDisplayedDevice,
-  useDisplayedDeviceOrThrow,
-} from '../context/DisplayedDeviceContext';
 import {desc, eq} from 'drizzle-orm';
+import {useLiveQuery} from 'drizzle-orm/expo-sqlite';
+import React from 'react';
+import {StyleSheet, Text, View} from 'react-native';
+import Header from '../components/Header';
+import {useDisplayedConnectedDevice} from '../context/DisplayedConnectedDeviceContext';
+import {useDisplayedDeviceOrThrow} from '../context/DisplayedDeviceContext';
+import {restingHeartRate24h} from '../db/schema';
+import {useDrizzleDB} from '../hooks/useDrizzleDB';
+import {DailyScreen} from './DailyScreen';
 
 const RestHeartRate = () => {
   const drizzleDB = useDrizzleDB();
@@ -45,47 +42,10 @@ const RestHeartRate = () => {
 };
 
 export function DisplayedDeviceScreen() {
-  const storage = useStorage();
-
   return (
-    <View style={{flex: 1, width: '100%', paddingHorizontal: 16}}>
+    <View style={{flex: 1, width: '100%'}}>
       <Header />
-      <RestHeartRate />
-
-      <Button
-        title="Migrate data dumps"
-        onPress={() => {
-          try {
-            migrateHistoricalDataDumps(storage);
-          } catch (error) {
-            console.error('Migration failed:', error);
-          }
-        }}
-      />
-      <Button
-        title="Fetch all historical data"
-        onPress={() => {
-          try {
-            storage.getHistoricalDataDumpNew().then(data => {
-              console.log('Fetched historical data:', data);
-            });
-          } catch (error) {
-            console.error('Fetch failed:', error);
-          }
-        }}
-      />
-      <Button
-        title="Fetch all 1min data"
-        onPress={() => {
-          try {
-            storage.getHeartRateAverage2min().then(data => {
-              console.log('Fetched 1min data:', data);
-            });
-          } catch (error) {
-            console.error('Fetch failed:', error);
-          }
-        }}
-      />
+      <DailyScreen />
     </View>
   );
 }

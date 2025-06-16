@@ -217,6 +217,16 @@ export class DeviceSession {
           charging,
           clock,
         };
+        if (!isWorn) {
+          // If the strap is not worn, we reset the heart rate data
+          this.heartRateFromStrap.next([
+            ...this.heartRateFromStrap.getValue(),
+            {
+              date: new Date(),
+              bpm: null, // Indicate that the strap is not worn
+            },
+          ]);
+        }
 
         this.deviceStateSubject.next(newState);
       } catch (error) {
@@ -250,14 +260,20 @@ export class DeviceSession {
     if (!command.withResponse) {
       return command.parseResponse(packet);
     }
-    const responsePacket = await firstValueFrom(
+
+    const parsedResponse = firstValueFrom(
       this.commandPacketsFromStrap.pipe(
         first((responsePacket) => responsePacket.cmd === packet.cmd),
       ),
-    );
-    const result = command.parseResponse(responsePacket);
-    console.log('[DeviceSession][sendCommandInternal] result parsed', result);
-    return result;
+    ).then((responsePacket) => command.parseResponse(responsePacket));
+
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Command response timed out'));
+      }, 1000); // Default timeout of 5 seconds
+    });
+
+    return Promise.race([parsedResponse, timeoutPromise]);
   }
 
   /**
@@ -375,18 +391,10 @@ export class DeviceSession {
       const historicalPacketsSub = this.dataPacketsFromStrap
         .pipe(filter((packet) => packet.type === PacketType.HISTORICAL_DATA))
         .subscribe((packet) => {
-          // console.log(
-          //   '[DeviceSession][getHistoricalDataPackets] Historical data packet received',
-          //   packet,
-          // );
           try {
             const parsedPacket = parseHistoricalDataPacket(packet);
-            const { timestampMs, heartRate, unknown, rr } = parsedPacket;
             subscriber.next(parsedPacket);
             this.mostRecentHistoricalDataPacket.next(parsedPacket);
-            // console.log(
-            //   `[DeviceSession][getHistoricalDataPackets] Parsed data packet: timestamp=${timestampMs}, date=${new Date(timestampMs).toISOString()}, heartRate=${heartRate}, unknown=${unknown}, rr=${JSON.stringify(rr)}`,
-            // );
           } catch (error) {
             console.error(error);
           }
