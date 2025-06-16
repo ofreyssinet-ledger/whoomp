@@ -21,6 +21,9 @@
     "transport-rn": "pnpm --filter @whoomp/transport-rn",
     "transport-web": "pnpm --filter @whoomp/transport-web"
   },
+  "resolutions": {
+    "@react-native/assets-registry": "catalog:"
+  },
   "dependencies": {
     "@babel/runtime": "^7.27.1",
     "@react-native/codegen": "0.79.2"

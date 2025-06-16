@@ -1,10 +1,11 @@
 import {AverageHRDataSet, RHRDataSet} from '@whoomp/sdk';
-import {useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useDisplayedDeviceOrThrow} from '../context/DisplayedDeviceContext';
 import {useSdk} from '../context/SdkContext';
 import {DayData} from '../model/dayData';
 import {DayView} from '../components/DayView';
 import {Text, FlatList} from 'react-native';
+import {useLastSyncDate} from '../hooks/useLastSyncDate';
 
 function splitAnalysedDataInDayChunks(
   endTimestampMs: number,
@@ -39,11 +40,17 @@ function splitAnalysedDataInDayChunks(
   return dayIntervals;
 }
 
-export function DailyScreen() {
+export const DailyScreen = React.memo(() => {
   const displayedDevice = useDisplayedDeviceOrThrow();
   const sdk = useSdk();
 
   const [data, setData] = useState<Array<DayData>>([]);
+  const [minMaxHR, setMinMaxHR] = useState<{minHR: number; maxHR: number}>({
+    minHR: 0,
+    maxHR: 240,
+  });
+
+  const lastSyncDate = useLastSyncDate();
 
   useEffect(() => {
     let dead = false;
@@ -55,12 +62,15 @@ export function DailyScreen() {
         endTimestampMs,
         analysedData,
       );
+      const minHR = Math.min(...analysedData.hrAvg1min.map(p => p.heartRate));
+      const maxHR = Math.max(...analysedData.hrAvg1min.map(p => p.heartRate));
+      setMinMaxHR({minHR, maxHR});
       setData(dayChunks);
     });
     return () => {
       dead = true;
     };
-  }, [displayedDevice.deviceName, sdk]);
+  }, [displayedDevice.deviceName, sdk, lastSyncDate?.getTime()]);
 
   if (data.length === 0) {
     return <Text>No data available for the selected device.</Text>;
@@ -70,8 +80,8 @@ export function DailyScreen() {
       data={data}
       horizontal={true}
       inverted={true}
-      renderItem={({item}) => <DayView data={item} />}
+      renderItem={({item}) => <DayView data={item} minMaxHR={minMaxHR} />}
       keyExtractor={(item, index) => index.toString()}
     />
   );
-}
+});

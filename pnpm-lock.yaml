@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@react-native/codegen':
+      specifier: 0.79.2
+      version: 0.79.2
     react-native:
       specifier: 0.79.2
       version: 0.79.2
@@ -15,6 +18,9 @@ catalogs:
     rxjs:
       specifier: ^7.8.1
       version: 7.8.2
+
+overrides:
+  '@react-native/assets-registry': 0.79.2
 
 importers:
 
@@ -42,8 +48,11 @@ importers:
       '@react-native-community/slider':
         specifier: ^4.5.7
         version: 4.5.7
-      '@react-native/codegen':
+      '@react-native/assets-registry':
         specifier: 0.79.2
+        version: 0.79.2
+      '@react-native/codegen':
+        specifier: 'catalog:'
         version: 0.79.2(@babel/core@7.27.1)
       '@shopify/react-native-skia':
         specifier: ^2.0.4
@@ -7532,7 +7541,9 @@ snapshots:
       metro-runtime: 0.82.4
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.79.2': {}
 

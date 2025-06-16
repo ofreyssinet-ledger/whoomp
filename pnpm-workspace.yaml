@@ -4,5 +4,7 @@ packages:
 catalog:
   rxjs: ^7.8.1
   react-native: 0.79.2
+  '@react-native/assets-registry': 0.79.2
+  '@react-native/codegen': 0.79.2
   react-native-ble-plx: 3.4.0
 nodeLinker: isolated

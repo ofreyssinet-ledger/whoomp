@@ -23,6 +23,9 @@ export type AnalysedDataResult = {
   rhr24h: RHRDataSet;
 };
 
+const MIN_VALID_HEART_RATE = 10;
+const MAX_VALID_HEART_RATE = 250;
+
 export function analyseData(rawData: RawData): AnalysedDataResult {
   const MS_1MIN = 60 * 1000;
   const MS_2MIN = 2 * 60 * 1000;
@@ -33,7 +36,14 @@ export function analyseData(rawData: RawData): AnalysedDataResult {
     return { hrAvg1min: [], hrAvg2min: [], hrAvg5min: [], rhr24h: [] };
   }
 
-  const data = rawData.slice().sort((a, b) => a.timestampMs - b.timestampMs);
+  const data = rawData
+    .filter(
+      (p) =>
+        p.heartRate > MIN_VALID_HEART_RATE &&
+        p.heartRate < MAX_VALID_HEART_RATE,
+    )
+    .slice()
+    .sort((a, b) => a.timestampMs - b.timestampMs);
   const times = data.map((p) => p.timestampMs);
   const rates = data.map((p) => p.heartRate);
 
