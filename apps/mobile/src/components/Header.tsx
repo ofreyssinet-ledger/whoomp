@@ -22,10 +22,10 @@ import {
 } from '../hooks/connectedDeviceHooks';
 import {useAppState} from '../context/AppStateContext';
 import {useSdk} from '../context/SdkContext';
-import {useLiveQuery} from 'drizzle-orm/expo-sqlite';
-import {useDrizzleDB} from '../hooks/useDrizzleDB';
-import {lastSync} from '../db/schema';
-import {eq} from 'drizzle-orm';
+import BeatingHeart from './BeatingHeart';
+import {KeepAwake} from './KeepAwake';
+import {useDataCounts} from '../hooks/useDataCounts';
+import {useLastSyncDate} from '../hooks/useLastSyncDate';
 
 const monospaceFont = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -46,24 +46,6 @@ const DeviceName = () => {
     </Text>
   );
 };
-
-function useLastSyncDate() {
-  const displayedDevice = useDisplayedDeviceOrThrow();
-
-  const drizzleDB = useDrizzleDB();
-
-  const {data: syncStatus} = useLiveQuery(
-    drizzleDB
-      .select()
-      .from(lastSync)
-      .where(eq(lastSync.deviceName, displayedDevice.deviceName))
-      .limit(1),
-  );
-
-  const deviceSyncStatus = syncStatus?.[0];
-
-  return deviceSyncStatus ? new Date(deviceSyncStatus.lastSyncedMs) : null;
-}
 
 const DeviceStatusNotConnected = () => {
   const lastSyncDate = useLastSyncDate();
@@ -102,6 +84,7 @@ const DeviceStatusConnected = () => {
 
   return (
     <Text style={{fontSize: 14, color: 'gray'}}>
+      {downloadingHistoricalData && <KeepAwake />}
       {downloadingHistoricalData && mostRecentPacketDate
         ? `Syncing... ${mostRecentPacketDate.toLocaleDateString()}, ${mostRecentPacketDate.toLocaleTimeString()}`
         : `Last sync: ${lastSyncReadableDate}`}
@@ -167,10 +150,22 @@ const HeartRate = () => {
 
   const heartRate = useHeartRate(connectedDevice);
 
+  if (heartRate === null || heartRate === 0)
+    return (
+      <Text style={{fontSize: 14, color: 'gray', opacity: 0.8}}>
+        Heart Rate: N/A
+      </Text>
+    );
+
   return (
-    <Text style={{fontSize: 14, color: 'gray', opacity: 0.8}}>
-      {heartRate ?? 'N/A'} bpm ♡
-    </Text>
+    <View style={{flexDirection: 'row', alignItems: 'center', opacity: 0.8}}>
+      <Text style={{fontSize: 14, color: 'gray', marginRight: 4}}>
+        {heartRate} bpm
+      </Text>
+      <View style={{marginTop: 1}}>
+        <BeatingHeart bpm={heartRate} size={14} color="grey" />
+      </View>
+    </View>
   );
 };
 
@@ -206,6 +201,18 @@ const DeviceState = () => {
         {deviceState ? JSON.stringify(deviceState, null, 2) : 'N/A'}
       </Text>
       <DeviceClockChecker />
+    </View>
+  );
+};
+
+const DataCounts = () => {
+  const dataCounts = useDataCounts();
+  return (
+    <View style={{backgroundColor: '#f8f8f8', padding: 8, borderRadius: 4}}>
+      <Text style={{fontSize: 16, fontWeight: 'bold'}}>Data Counts</Text>
+      <Text style={styles.codeblock}>
+        {JSON.stringify(dataCounts, null, 2)}
+      </Text>
     </View>
   );
 };
@@ -258,7 +265,7 @@ const SyncButton = () => {
 
   const [syncing, setSyncing] = React.useState(false);
 
-  const handlePress = () => {
+  const handlePress = (entireHistory = false) => {
     if (syncing) {
       // If already syncing, abort the sync
       sdk.abortAllDownloads();
@@ -267,7 +274,10 @@ const SyncButton = () => {
     } else {
       setSyncing(true);
       sdk
-        .syncDeviceData(connectedDevice.id)
+        .syncDeviceData(
+          connectedDevice.id,
+          entireHistory ? new Date(0) : undefined,
+        )
         .catch(error => {
           console.error('Sync failed:', error);
           setSyncing(false);
@@ -279,7 +289,18 @@ const SyncButton = () => {
   };
 
   return (
-    <Button title={syncing ? 'Abort sync' : 'Sync'} onPress={handlePress} />
+    <>
+      <Button
+        title={syncing ? 'Abort sync' : 'Sync'}
+        disabled={syncing}
+        onPress={() => handlePress()}
+      />
+      <Button
+        title={syncing ? 'Abort sync' : 'Sync & rewrite historical data'}
+        disabled={syncing}
+        onPress={() => handlePress(true)}
+      />
+    </>
   );
 };
 
@@ -330,6 +351,7 @@ export default function Header() {
         <View style={{marginTop: 16, rowGap: 8}}>
           {Boolean(connectedDevice) && <DeviceState />}
           {Boolean(connectedDevice) && <DeviceSessionState />}
+          <DataCounts />
           {Boolean(connectedDevice) && <SyncButton />}
           {Boolean(connectedDevice) && <DisconnectButton />}
           {!connectedDevice && <ConnectAnotherDeviceButton />}
