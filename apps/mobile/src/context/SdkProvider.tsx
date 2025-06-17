@@ -30,5 +30,11 @@ export function SdkProvider({children}: {children: React.ReactNode}) {
     };
   }, [sdk]);
 
+  useEffect(() => {
+    return () => {
+      sdk.destroy();
+    };
+  }, [sdk]);
+
   return <SdkContext.Provider value={sdk}>{children}</SdkContext.Provider>;
 }
