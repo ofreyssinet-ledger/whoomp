@@ -186,7 +186,14 @@ export class Sdk {
         );
       },
       bufferSize,
-    );
+    ).catch((error) => {
+      console.error(
+        'SDK: [downloadHistoricalData] Error downloading historical data, aborting download',
+        error,
+      );
+      deviceSession.getConnectedDevice().abortDownload();
+      throw error;
+    });
   }
 
   async syncDeviceData(deviceId: string, fromDate?: Date) {
@@ -196,7 +203,7 @@ export class Sdk {
       downloadedData = await this.downloadHistoricalData(deviceId);
     } catch (error) {
       console.error(
-        'SDK: [syncDeviceData] Error downloading historical data for deviceId',
+        'SDK: [syncDeviceData] Error downloading historical data for deviceId, aborting sync',
         deviceId,
         error,
       );

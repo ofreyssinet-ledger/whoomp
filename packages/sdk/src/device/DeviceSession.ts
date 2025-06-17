@@ -343,7 +343,7 @@ export class DeviceSession {
 
       if (this.downloadAborted) {
         console.log(
-          '[DeviceSession][getHistoricalDataPackets] Download aborted by user',
+          '[DeviceSession][getHistoricalDataPackets] Download aborted',
         );
         this.downloadAborted = false;
         break;

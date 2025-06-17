@@ -26,7 +26,14 @@ export function downloadHistoricalData(
         packets.length,
       );
       const historicalDataDump = makeHistoricalDataDump(deviceName, packets);
-      saveHistoricalDataDump(historicalDataDump);
+      saveHistoricalDataDump(historicalDataDump).catch((err) => {
+        console.error(
+          '[downloadHistoricalData] Error saving historical data dump for deviceId',
+          deviceId,
+          err,
+        );
+        rejectPromise(err);
+      });
       savedDataDumps.push(historicalDataDump);
     },
     complete: () => {
