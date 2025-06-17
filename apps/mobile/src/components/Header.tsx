@@ -297,6 +297,10 @@ const SyncButton = () => {
           )
           .catch(error => {
             console.error('Sync failed:', error);
+            Alert.alert(
+              'Sync failed',
+              `An error occurred while syncing: ${error.message}`,
+            );
             setSyncing(false);
           })
           .finally(() => {
