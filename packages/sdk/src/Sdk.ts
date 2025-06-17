@@ -238,24 +238,14 @@ export class Sdk {
       'SDK: [syncDeviceData] Effective from date for analysis is',
       effectiveFromDate?.toUTCString(),
     );
-    await this.analyseDeviceData(
-      deviceName,
-      effectiveFromDate,
-      undefined,
-      true,
-    );
+    await this.analyseDeviceData(deviceName, effectiveFromDate, undefined);
     console.log(
       'SDK: [syncDeviceData] Data synced and analysed for device',
       deviceName,
     );
   }
 
-  async analyseDeviceData(
-    deviceName: string,
-    fromDate?: Date,
-    toDate?: Date,
-    eraseExistingAnalysis: boolean = true,
-  ) {
+  async analyseDeviceData(deviceName: string, fromDate?: Date, toDate?: Date) {
     console.log(
       'SDK: [analyseDeviceData] called for deviceName',
       deviceName,
@@ -286,13 +276,33 @@ export class Sdk {
       deviceName,
     );
 
-    // If eraseExisting is true, erase the existing data in storage
-    if (eraseExistingAnalysis) {
-      this.storage.deleteHeartRateAverage1min(deviceName, fromDate, toDate);
-      this.storage.deleteHeartRateAverage2min(deviceName, fromDate, toDate);
-      this.storage.deleteHeartRateAverage5min(deviceName, fromDate, toDate);
-      this.storage.deleteRestingHeartRate24h(deviceName, fromDate, toDate);
-    }
+    // Erase the existing data in storage
+    this.storage.deleteHeartRateAverage1min(
+      deviceName,
+      new Date(analysedData.hrAvg1min[0].timestampMs),
+      new Date(
+        analysedData.hrAvg1min[analysedData.hrAvg1min.length - 1].timestampMs,
+      ),
+    );
+    this.storage.deleteHeartRateAverage2min(
+      deviceName,
+      new Date(analysedData.hrAvg2min[0].timestampMs),
+      new Date(
+        analysedData.hrAvg2min[analysedData.hrAvg2min.length - 1].timestampMs,
+      ),
+    );
+    this.storage.deleteHeartRateAverage5min(
+      deviceName,
+      new Date(analysedData.hrAvg5min[0].timestampMs),
+      new Date(
+        analysedData.hrAvg5min[analysedData.hrAvg5min.length - 1].timestampMs,
+      ),
+    );
+    this.storage.deleteRestingHeartRate24h(
+      deviceName,
+      new Date(analysedData.rhr24h[0].timestampMs),
+      new Date(analysedData.rhr24h[analysedData.rhr24h.length - 1].timestampMs),
+    );
 
     // Save the new analysis results to storage
     this.storage.saveHeartRateAverage1min(
