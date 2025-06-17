@@ -273,18 +273,40 @@ const SyncButton = () => {
       return;
     } else {
       setSyncing(true);
-      sdk
-        .syncDeviceData(
-          connectedDevice.id,
-          entireHistory ? new Date(0) : undefined,
-        )
-        .catch(error => {
-          console.error('Sync failed:', error);
-          setSyncing(false);
-        })
-        .finally(() => {
-          setSyncing(false);
-        });
+
+      function sync() {
+        sdk
+          .syncDeviceData(
+            connectedDevice.id,
+            entireHistory ? new Date(0) : undefined,
+          )
+          .catch(error => {
+            console.error('Sync failed:', error);
+            setSyncing(false);
+          })
+          .finally(() => {
+            setSyncing(false);
+          });
+      }
+      if (entireHistory) {
+        Alert.alert(
+          'Syncing entire history',
+          'This will rewrite all historical data. Are you sure?',
+          [
+            {
+              text: 'Cancel',
+              onPress: () => setSyncing(false),
+              style: 'cancel',
+            },
+            {
+              text: 'OK',
+              onPress: sync,
+            },
+          ],
+        );
+      } else {
+        sync();
+      }
     }
   };
 
@@ -296,7 +318,7 @@ const SyncButton = () => {
         onPress={() => handlePress()}
       />
       <Button
-        title={syncing ? 'Abort sync' : 'Sync & rewrite historical data'}
+        title={syncing ? 'Abort sync' : 'Resync entire history'}
         disabled={syncing}
         onPress={() => handlePress(true)}
       />
