@@ -159,12 +159,12 @@ export class Sdk {
    * Downloads historical data for a connected device. Saves the data in chunks
    * to the storage using the provided buffer size.
    * @param deviceId The ID of the device to download data from.
-   * @param bufferSize The size of the buffer for historical data packets (default is 36000).
+   * @param bufferSize The size of the buffer for historical data packets (default is 1000).
    * @returns A promise that resolves with the historical data dump.
    */
   async downloadHistoricalData(
     deviceId: string,
-    bufferSize = 36000,
+    bufferSize = 1000,
   ): Promise<Array<HistoricalDataDump>> {
     console.log('SDK: downloadHistoricalData called for deviceId', deviceId);
     const deviceSession = this.getDeviceSession(deviceId);

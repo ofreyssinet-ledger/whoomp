@@ -7,7 +7,7 @@ export function downloadHistoricalData(
   deviceName: string,
   dataStream: Observable<HistoricalDataPacket>,
   saveHistoricalDataDump: (dump: HistoricalDataDump) => Promise<void>,
-  bufferSize: number = 36000, // Default to 10 hours of data at 1s intervals
+  bufferSize: number,
 ): Promise<Array<HistoricalDataDump>> {
   let resolvePromise: (value: Array<HistoricalDataDump>) => void;
   let rejectPromise: (reason?: any) => void;
