@@ -1,9 +1,8 @@
 import {desc, eq} from 'drizzle-orm';
 import {useLiveQuery} from 'drizzle-orm/expo-sqlite';
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
-import Header from '../components/Header';
-import {useDisplayedConnectedDevice} from '../context/DisplayedConnectedDeviceContext';
+import {Text, View} from 'react-native';
+import Header, {HEADER_HEIGHT} from '../components/Header';
 import {useDisplayedDeviceOrThrow} from '../context/DisplayedDeviceContext';
 import {restingHeartRate24h} from '../db/schema';
 import {useDrizzleDB} from '../hooks/useDrizzleDB';
@@ -43,9 +42,9 @@ const RestHeartRate = () => {
 
 export function DisplayedDeviceScreen() {
   return (
-    <View style={{flex: 1, width: '100%'}}>
-      <Header />
+    <View style={{flex: 1, width: '100%', paddingTop: HEADER_HEIGHT}}>
       <DailyScreen />
+      <Header />
     </View>
   );
 }

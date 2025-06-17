@@ -1,31 +1,46 @@
-import React, {useEffect} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
+  Alert,
   Button,
+  LayoutChangeEvent,
   Platform,
   Pressable,
   StyleSheet,
   Text,
-  Touchable,
   View,
 } from 'react-native';
-import {useDisplayedDeviceOrThrow} from '../context/DisplayedDeviceContext';
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import {
+  useSafeAreaFrame,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+import {useAppState} from '../context/AppStateContext';
 import {
   useDisplayedConnectedDevice,
   useDisplayedConnectedDeviceThrowIfNull,
 } from '../context/DisplayedConnectedDeviceContext';
-import {useConnectToDevice} from '../hooks/useConnectToDevice';
+import {useDisplayedDeviceOrThrow} from '../context/DisplayedDeviceContext';
+import {useSdk} from '../context/SdkContext';
+import {formatRelativeDate} from '../helpers/formatRelativeDate';
 import {
   useDeviceSessionState,
   useDeviceState,
   useHeartRate,
   useMostRecentHistoricalData,
 } from '../hooks/connectedDeviceHooks';
-import {useAppState} from '../context/AppStateContext';
-import {useSdk} from '../context/SdkContext';
-import BeatingHeart from './BeatingHeart';
-import {KeepAwake} from './KeepAwake';
+import {useConnectToDevice} from '../hooks/useConnectToDevice';
 import {useDataCounts} from '../hooks/useDataCounts';
 import {useLastSyncDate} from '../hooks/useLastSyncDate';
+import BeatingHeart from './BeatingHeart';
+import {KeepAwake} from './KeepAwake';
+
+const HEADER_BASE_HEIGHT = 50; // Default height of the header
+export const HEADER_HEIGHT = HEADER_BASE_HEIGHT; // Total height of the header
 
 const monospaceFont = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
@@ -51,7 +66,7 @@ const DeviceStatusNotConnected = () => {
   const lastSyncDate = useLastSyncDate();
 
   const lastSyncReadableDate = lastSyncDate
-    ? lastSyncDate.toLocaleString()
+    ? formatRelativeDate(lastSyncDate, true)
     : 'N/A';
 
   return (
@@ -65,7 +80,7 @@ const DeviceStatusConnected = () => {
   const lastSyncDate = useLastSyncDate();
 
   const lastSyncReadableDate = lastSyncDate
-    ? lastSyncDate.toLocaleString()
+    ? formatRelativeDate(lastSyncDate, true)
     : 'N/A';
 
   const connectedDevice = useDisplayedConnectedDeviceThrowIfNull();
@@ -86,7 +101,7 @@ const DeviceStatusConnected = () => {
     <Text style={{fontSize: 14, color: 'gray'}}>
       {downloadingHistoricalData && <KeepAwake />}
       {downloadingHistoricalData && mostRecentPacketDate
-        ? `Syncing... ${mostRecentPacketDate.toLocaleDateString()}, ${mostRecentPacketDate.toLocaleTimeString()}`
+        ? `Syncing... ${formatRelativeDate(mostRecentPacketDate, true)}`
         : `Last sync: ${lastSyncReadableDate}`}
     </Text>
   );
@@ -329,28 +344,105 @@ const SyncButton = () => {
 export default function Header() {
   const connectedDevice = useDisplayedConnectedDevice();
 
-  const [expanded, setExpanded] = React.useState(false);
-  const toggleExpanded = () => setExpanded(!expanded);
+  /**
+   *
+   * EXPANDED STATE OF THE HEADER
+   *
+   */
 
-  useEffect(() => {
-    if (!connectedDevice) {
-      setExpanded(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const expand = useCallback(() => {
+    setExpanded(true);
+    expandedAnimValue.value = withTiming(1, {duration: 300});
+  }, []);
+
+  const collapse = useCallback(() => {
+    setExpanded(false);
+    expandedAnimValue.value = withTiming(0, {duration: 300});
+  }, []);
+
+  const expandedAnimValue = useSharedValue(0);
+  const toggleExpanded = () => {
+    if (expanded) {
+      collapse();
+    } else {
+      expand();
     }
-  }, [connectedDevice]);
+    setExpanded(!expanded);
+  };
+
+  const containerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      backgroundColor: interpolateColor(
+        expandedAnimValue.value,
+        [0, 1],
+        ['transparent', '#00000066'],
+      ),
+    };
+  });
+
+  /**
+   *
+   * ANIMATED HEIGHT OF THE INNER VIEW THAT APPEARS WHEN THE HEADER IS EXPANDED"
+   *
+   */
+  const sharedHeight = useSharedValue<number | null>(null);
+  const handleLayout = useCallback(
+    ({nativeEvent: {layout}}: LayoutChangeEvent) => {
+      sharedHeight.value = withTiming(layout.height, {duration: 250});
+    },
+    [sharedHeight],
+  );
+  const animatedStyle = useAnimatedStyle(
+    () => ({
+      /**
+       * If it's null the component still renders normally at its full height
+       * without its height being derived from an animated value.
+       */
+      height: sharedHeight.value ?? undefined,
+    }),
+    [],
+  );
+
+  const safeAreaInsets = useSafeAreaInsets();
+  const safeAreaFrame = useSafeAreaFrame();
 
   return (
-    <View style={{width: '100%'}}>
+    <Animated.View
+      pointerEvents={expanded ? 'auto' : 'box-none'}
+      style={[
+        {
+          width: '100%',
+          position: 'absolute',
+          top: -safeAreaInsets.top,
+          paddingTop: safeAreaInsets.top,
+          bottom: -safeAreaInsets.top,
+        },
+        containerAnimatedStyle,
+      ]}>
+      {expanded && (
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={collapse} />
+      )}
       <View
         style={{
           marginHorizontal: 16,
           paddingHorizontal: 16,
           flexDirection: 'column',
           backgroundColor: '#f0f0f0',
-          paddingVertical: 8,
+          paddingVertical: 5,
           borderRadius: 8,
+          justifyContent: 'center',
+          maxHeight:
+            safeAreaFrame.height - safeAreaInsets.top - safeAreaInsets.bottom,
         }}>
         <Pressable onPress={toggleExpanded}>
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              height: 54,
+            }}>
             <View style={{rowGap: 4}}>
               <DeviceName />
               {connectedDevice ? (
@@ -370,17 +462,23 @@ export default function Header() {
             )}
           </View>
         </Pressable>
-        {expanded && (
-          <View style={{marginTop: 16, rowGap: 8}}>
-            {Boolean(connectedDevice) && <DeviceState />}
-            {Boolean(connectedDevice) && <DeviceSessionState />}
-            <DataCounts />
-            {Boolean(connectedDevice) && <SyncButton />}
-            {Boolean(connectedDevice) && <DisconnectButton />}
-            {!connectedDevice && <ConnectAnotherDeviceButton />}
-          </View>
-        )}
+        <Animated.ScrollView
+          style={animatedStyle}
+          showsVerticalScrollIndicator={false}>
+          <Animated.View onLayout={handleLayout}>
+            {expanded ? (
+              <View style={{marginTop: 16, rowGap: 8}}>
+                {Boolean(connectedDevice) && <SyncButton />}
+                {Boolean(connectedDevice) && <DeviceState />}
+                {Boolean(connectedDevice) && <DeviceSessionState />}
+                <DataCounts />
+                {Boolean(connectedDevice) && <DisconnectButton />}
+                {!connectedDevice && <ConnectAnotherDeviceButton />}
+              </View>
+            ) : null}
+          </Animated.View>
+        </Animated.ScrollView>
       </View>
-    </View>
+    </Animated.View>
   );
 }
