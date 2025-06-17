@@ -56,8 +56,21 @@ export const DailyScreen = React.memo(() => {
     let dead = false;
     sdk.getAnalysedData(displayedDevice.deviceName).then(analysedData => {
       if (dead) return;
-      const endTimestampMs =
+      const lastAnalysedTimestampMs =
         analysedData.hrAvg1min[analysedData.hrAvg1min.length - 1]?.timestampMs;
+
+      const d = new Date(lastAnalysedTimestampMs);
+      const base = new Date(
+        d.getFullYear(),
+        d.getMonth(),
+        d.getDate(),
+        0,
+        0,
+        0,
+        0,
+      ).getTime();
+      const endTimestampMs = base + 24 * 60 * 60 * 1000; // end of the day
+
       const dayChunks = splitAnalysedDataInDayChunks(
         endTimestampMs,
         analysedData,
