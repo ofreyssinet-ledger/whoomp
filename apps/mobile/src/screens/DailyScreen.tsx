@@ -3,8 +3,8 @@ import React, {useEffect, useState} from 'react';
 import {useDisplayedDeviceOrThrow} from '../context/DisplayedDeviceContext';
 import {useSdk} from '../context/SdkContext';
 import {DayData} from '../model/dayData';
-import {DayView} from '../components/DayView';
-import {Text, FlatList} from 'react-native';
+import {DayView} from '../components/DayView/DayView';
+import {Text, FlatList, useWindowDimensions} from 'react-native';
 import {useLastSyncDate} from '../hooks/useLastSyncDate';
 
 function splitAnalysedDataInDayChunks(
@@ -50,6 +50,8 @@ export const DailyScreen = React.memo(() => {
     maxHR: 240,
   });
 
+  const windowSize = useWindowDimensions();
+
   const lastSyncDate = useLastSyncDate();
 
   useEffect(() => {
@@ -92,6 +94,9 @@ export const DailyScreen = React.memo(() => {
     <FlatList
       data={data}
       horizontal={true}
+      snapToInterval={windowSize.width}
+      decelerationRate={0.997}
+      snapToAlignment="start"
       inverted={true}
       renderItem={({item}) => <DayView data={item} minMaxHR={minMaxHR} />}
       keyExtractor={(item, index) => index.toString()}

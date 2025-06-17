@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {View, Text, useWindowDimensions} from 'react-native';
 import {DayData} from '../../model/dayData';
 import {formatRelativeDate} from '../../helpers/formatRelativeDate';
@@ -24,31 +24,40 @@ const RestHeartRate = ({
         marginBottom: 16,
         alignItems: 'flex-start',
         alignSelf: 'flex-start',
+        opacity: rhrPoint.heartRate > 0 ? 1 : 0,
       }}>
       <Text
         style={{
           fontSize: 16,
-          fontWeight: 'semibold',
           alignSelf: 'flex-start',
+          color: '#555',
         }}>
         RHR
       </Text>
-      <Text style={{fontSize: 24, fontWeight: 'bold', marginTop: 8}}>
-        {Math.round(rhrPoint.heartRate)} bpm
-        {/* {new Date(rhrPoint.measuredAtMs).toLocaleString()}) */}
+      <Text style={{fontSize: 30, fontWeight: 'bold', marginTop: 4}}>
+        {Math.round(rhrPoint.heartRate)}
+        <Text style={{fontSize: 17}}> bpm</Text>
+      </Text>
+      <Text style={{fontSize: 10, marginTop: 4}}>
+        {formatRelativeDate(rhrPoint.measuredAtMs, true)}
       </Text>
     </View>
   );
 };
 
 export const DayView = ({data, minMaxHR}: Props) => {
-  const rhrPoint = data.rhr24h[data.rhr24h.length - 1];
+  const rhrPoint = useMemo(() => {
+    return (
+      data.rhr24h[data.rhr24h.length - 1] ?? {heartRate: 0, measuredAtMs: 0}
+    );
+  }, [data.rhr24h]);
+
   const windowSize = useWindowDimensions();
   return (
     <View style={{marginTop: 16, width: windowSize.width}}>
       <View style={{padding: 16}}>
         <Text style={{fontSize: 48, fontWeight: 'bold', marginBottom: 16}}>
-          {formatRelativeDate(data.chunkEndMs)}
+          {formatRelativeDate(data.chunkEndMs - 1)}
         </Text>
         {/* <Text>Chunk Start: {new Date(data.chunkStartMs).toLocaleString()}</Text>
         <Text>Chunk End: {new Date(data.chunkEndMs).toLocaleString()}</Text>
@@ -68,20 +77,3 @@ export const DayView = ({data, minMaxHR}: Props) => {
     </View>
   );
 };
-
-// const DayGraph = ({data}: {data: DayData}) => {
-//   // Placeholder for future graph implementation
-//   return (
-//     <View
-//       style={{
-//         height: 200,
-//         backgroundColor: '#f0f0f0',
-//         marginTop: 16,
-//         borderWidth: 1,
-//       }}>
-//       <Text style={{textAlign: 'center', paddingTop: 80}}>
-//         Graph will be implemented here
-//       </Text>
-//     </View>
-//   );
-// };

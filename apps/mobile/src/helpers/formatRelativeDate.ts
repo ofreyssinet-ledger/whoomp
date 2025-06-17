@@ -1,4 +1,7 @@
-export function formatRelativeDate(input: Date | string | number): string {
+export function formatRelativeDate(
+  input: Date | string | number,
+  withTime = false,
+): string {
   const date = new Date(input);
   const now = new Date();
 
@@ -8,27 +11,39 @@ export function formatRelativeDate(input: Date | string | number): string {
   const msInDay = 24 * 60 * 60 * 1000;
   const diffDays = Math.round((today.getTime() - target.getTime()) / msInDay);
 
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
+  let dayString;
 
-  const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  return `${monthNames[date.getMonth()]} ${date.getDate()}`;
+  if (diffDays === 0) dayString = 'Today';
+  else if (diffDays === 1) dayString = 'Yesterday';
+  else {
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    dayString = `${dayNames[date.getDay()]}, ${
+      monthNames[date.getMonth()]
+    } ${date.getDate()}`;
+  }
+
+  return (
+    dayString +
+    (withTime
+      ? ` at ${date.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`
+      : '')
+  );
 }
-
-// Usage examples:
-console.log(formatRelativeDate(new Date())); // "today"
-console.log(formatRelativeDate(Date.now() - 86400000)); // "yesterday"
-console.log(formatRelativeDate('2025-06-10')); // "June 10"
