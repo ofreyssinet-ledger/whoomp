@@ -277,31 +277,28 @@ export class Sdk {
     );
 
     // Erase the existing data in storage
+    const getFirstLastTimestamp = (data: any[]) => {
+      if (data.length === 0) return [new Date(0), new Date(0)];
+      return [
+        new Date(data[0].timestampMs),
+        new Date(data[data.length - 1].timestampMs),
+      ];
+    };
     this.storage.deleteHeartRateAverage1min(
       deviceName,
-      new Date(analysedData.hrAvg1min[0].timestampMs),
-      new Date(
-        analysedData.hrAvg1min[analysedData.hrAvg1min.length - 1].timestampMs,
-      ),
+      ...getFirstLastTimestamp(analysedData.hrAvg1min),
     );
     this.storage.deleteHeartRateAverage2min(
       deviceName,
-      new Date(analysedData.hrAvg2min[0].timestampMs),
-      new Date(
-        analysedData.hrAvg2min[analysedData.hrAvg2min.length - 1].timestampMs,
-      ),
+      ...getFirstLastTimestamp(analysedData.hrAvg2min),
     );
     this.storage.deleteHeartRateAverage5min(
       deviceName,
-      new Date(analysedData.hrAvg5min[0].timestampMs),
-      new Date(
-        analysedData.hrAvg5min[analysedData.hrAvg5min.length - 1].timestampMs,
-      ),
+      ...getFirstLastTimestamp(analysedData.hrAvg5min),
     );
     this.storage.deleteRestingHeartRate24h(
       deviceName,
-      new Date(analysedData.rhr24h[0].timestampMs),
-      new Date(analysedData.rhr24h[analysedData.rhr24h.length - 1].timestampMs),
+      ...getFirstLastTimestamp(analysedData.rhr24h),
     );
 
     // Save the new analysis results to storage
