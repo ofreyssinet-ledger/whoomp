@@ -8,7 +8,7 @@ import {DayData} from '../../model/dayData';
 import interFont from '../../../assets/fonts/Inter.ttf';
 
 // Toggle log scale on/off
-const USE_LOG_SCALE = true;
+const USE_LOG_SCALE = false;
 
 enum DisplayedAvg {
   HR_1MIN = 'hrAvg1min',
@@ -18,7 +18,6 @@ enum DisplayedAvg {
 
 type Props = {
   data: DayData;
-  width: number | string;
   minMaxHR: {minHR: number; maxHR: number};
   displayedAvg?: DisplayedAvg;
 };
@@ -26,7 +25,7 @@ type Props = {
 const DEFAULT_DISPLAYED_AVG: DisplayedAvg = DisplayedAvg.HR_5MIN;
 
 export const DayGraph: React.FC<Props> = React.memo(
-  ({data, width, minMaxHR, displayedAvg = DEFAULT_DISPLAYED_AVG}) => {
+  ({data, minMaxHR, displayedAvg = DEFAULT_DISPLAYED_AVG}) => {
     const {chunkStartMs, chunkEndMs, hrAvg1min, hrAvg2min, hrAvg5min, rhr24h} =
       data;
     const displayedAvgHR = useMemo(() => {
@@ -42,7 +41,8 @@ export const DayGraph: React.FC<Props> = React.memo(
       }
     }, [hrAvg1min, hrAvg2min, hrAvg5min]);
 
-    const {minHR, maxHR} = minMaxHR;
+    const {maxHR} = minMaxHR;
+    const minHR = 0;
 
     const font = useFont(interFont, 16);
 
@@ -116,8 +116,6 @@ export const DayGraph: React.FC<Props> = React.memo(
 
     if (!font) return null;
 
-    console.log(minHR);
-
     return (
       <View style={[styles.container]}>
         <CartesianChart
@@ -155,12 +153,12 @@ export const DayGraph: React.FC<Props> = React.memo(
               {/* <Area points={points.hr} y0={chartBounds.bottom} color="red">
 
               </Area> */}
-              <Line points={points.hr} color="#fe2c55" strokeWidth={2}>
+              <Line points={points.hr} color="#fe2c55" strokeWidth={1.5}>
                 <LinearGradient
                   start={vec(
                     0,
                     chartBounds.bottom +
-                      (chartBounds.top - chartBounds.bottom) * 0.2,
+                      (chartBounds.top - chartBounds.bottom) * 0.25,
                   )}
                   end={vec(
                     0,
@@ -168,7 +166,6 @@ export const DayGraph: React.FC<Props> = React.memo(
                       (chartBounds.top - chartBounds.bottom) * 0.1,
                   )}
                   colors={[
-                    '#42A5F5',
                     '#42A5F5',
                     '#00C853', // green
                     '#40C463',

@@ -96,8 +96,8 @@ export function analyseData(rawData: RawData): AnalysedDataResult {
   }
 
   const hrAvg1min = computeMovingAverage(MS_1MIN, MS_1MIN);
-  const hrAvg2min = computeMovingAverage(MS_2MIN, MS_2MIN);
-  const hrAvg5min = computeMovingAverage(MS_5MIN, MS_5MIN);
+  const hrAvg2min = computeMovingAverage(MS_2MIN, MS_1MIN);
+  const hrAvg5min = computeMovingAverage(MS_5MIN, MS_1MIN);
 
   function computeMinOverWindow(
     src: AverageHRDataSet,

@@ -59,16 +59,8 @@ export const DayView = ({data, minMaxHR}: Props) => {
         <Text style={{fontSize: 48, fontWeight: 'bold', marginBottom: 16}}>
           {formatRelativeDate(data.chunkEndMs - 1)}
         </Text>
-        {/* <Text>Chunk Start: {new Date(data.chunkStartMs).toLocaleString()}</Text>
-        <Text>Chunk End: {new Date(data.chunkEndMs).toLocaleString()}</Text>
-
-        <Text>
-          RHR: {Math.round(rhrPoint?.heartRate)} (measured at{' '}
-          {new Date(rhrPoint?.measuredAtMs).toLocaleString()})
-        </Text>
-        <Text>1-Minute Average HR Data size: {data.hrAvg1min.length}</Text> */}
       </View>
-      <DayGraph data={data} minMaxHR={minMaxHR} width={'100%'} />
+      <DayGraph data={data} minMaxHR={minMaxHR} />
       <View style={{padding: 16, marginTop: 16}}>
         {rhrPoint && <RestHeartRate rhrPoint={rhrPoint} />}
       </View>
