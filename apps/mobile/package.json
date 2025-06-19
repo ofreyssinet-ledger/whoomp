@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "@react-native-community/slider": "^4.5.7",
-    "@react-native/codegen": "catalog:",
     "@react-native/assets-registry": "catalog:",
+    "@react-native/codegen": "catalog:",
     "@shopify/react-native-skia": "^2.0.4",
     "@whoomp/sdk": "workspace:*",
     "@whoomp/transport-rn-ble": "workspace:*",
@@ -54,6 +54,7 @@
     "@types/react": "^19.0.0",
     "@types/react-test-renderer": "^19.0.0",
     "babel-plugin-inline-import": "^3.0.0",
+    "babel-preset-expo": "^13.2.1",
     "drizzle-kit": "^0.31.1",
     "eslint": "^8.19.0",
     "eslint-plugin-jest": "^28.13.5",
