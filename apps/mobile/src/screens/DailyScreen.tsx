@@ -16,28 +16,71 @@ function splitAnalysedDataInDayChunks(
     rhr24h: RHRDataSet;
   },
 ): Array<DayData> {
-  const startTimestampMs = data.hrAvg1min[0]?.timestampMs || 0;
-  const dayIntervals = [];
   const dayMS = 24 * 60 * 60 * 1000;
+  const dayMap = new Map<number, DayData>();
 
-  function filterDataPoint(fromTimestamp: number, toTimestampNumber: number) {
-    return (dataPoint: {timestampMs: number}) =>
-      dataPoint.timestampMs >= fromTimestamp &&
-      dataPoint.timestampMs < toTimestampNumber;
-  }
+  // Helper function to get day key from timestamp
+  const getDayKey = (timestampMs: number) => {
+    const date = new Date(timestampMs);
+    const dayStart = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      0,
+      0,
+      0,
+      0,
+    ).getTime();
+    return dayStart;
+  };
 
-  for (let t = endTimestampMs; t >= startTimestampMs; t -= dayMS) {
-    const filterFn = filterDataPoint(t - dayMS, t);
-    dayIntervals.push({
-      chunkStartMs: t - dayMS,
-      chunkEndMs: t,
-      hrAvg1min: data.hrAvg1min.filter(filterFn),
-      hrAvg2min: data.hrAvg2min.filter(filterFn),
-      hrAvg5min: data.hrAvg5min.filter(filterFn),
-      rhr24h: data.rhr24h.filter(filterFn),
-    });
-  }
-  return dayIntervals;
+  // Helper function to ensure day exists in map
+  const ensureDay = (dayKey: number) => {
+    if (!dayMap.has(dayKey)) {
+      dayMap.set(dayKey, {
+        chunkStartMs: dayKey,
+        chunkEndMs: dayKey + dayMS,
+        hrAvg1min: [],
+        hrAvg2min: [],
+        hrAvg5min: [],
+        rhr24h: [],
+      });
+    }
+    return dayMap.get(dayKey)!;
+  };
+
+  // Process hrAvg1min data
+  data.hrAvg1min.forEach(dataPoint => {
+    const dayKey = getDayKey(dataPoint.timestampMs);
+    const day = ensureDay(dayKey);
+    day.hrAvg1min.push(dataPoint);
+  });
+
+  // Process hrAvg2min data
+  data.hrAvg2min.forEach(dataPoint => {
+    const dayKey = getDayKey(dataPoint.timestampMs);
+    const day = ensureDay(dayKey);
+    day.hrAvg2min.push(dataPoint);
+  });
+
+  // Process hrAvg5min data
+  data.hrAvg5min.forEach(dataPoint => {
+    const dayKey = getDayKey(dataPoint.timestampMs);
+    const day = ensureDay(dayKey);
+    day.hrAvg5min.push(dataPoint);
+  });
+
+  // Process rhr24h data
+  data.rhr24h.forEach(dataPoint => {
+    const dayKey = getDayKey(dataPoint.timestampMs);
+    const day = ensureDay(dayKey);
+    day.rhr24h.push(dataPoint);
+  });
+
+  // Convert map to array and sort by day (newest first)
+  return Array.from(dayMap.values()).sort(
+    (a, b) => b.chunkStartMs - a.chunkStartMs,
+  );
 }
 
 export const DailyScreen = React.memo(() => {
